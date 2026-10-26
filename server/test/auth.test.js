@@ -322,3 +322,126 @@ describe('Authentication Backend Unit & Integration Tests (Isolated Seams)', () 
     });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Session Lifetime Enforcement Tests (deterministic, no real time manipulation)
+// ─────────────────────────────────────────────────────────────────────────────
+import { getSessionOptions } from '../src/config/session.config.js';
+
+describe('Session Lifetime Configuration', () => {
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+  it('maxAge is exactly seven days in milliseconds', () => {
+    const opts = getSessionOptions({ secret: 'test-secret-minimum-32-chars-exact!', secure: false });
+    assert.strictEqual(opts.cookie.maxAge, SEVEN_DAYS_MS,
+      'Session cookie maxAge must be exactly 7 days (604800000 ms)');
+  });
+
+  it('rolling is false so session touch cannot extend the deadline', () => {
+    const opts = getSessionOptions({ secret: 'test-secret-minimum-32-chars-exact!', secure: false });
+    assert.strictEqual(opts.rolling, false,
+      'rolling must be false to prevent touch/renewal from extending the 7-day deadline');
+  });
+
+  it('saveUninitialized is false so anonymous requests do not create sessions', () => {
+    const opts = getSessionOptions({ secret: 'test-secret-minimum-32-chars-exact!', secure: false });
+    assert.strictEqual(opts.saveUninitialized, false);
+  });
+
+  it('resave is false so unchanged sessions are not needlessly re-persisted', () => {
+    const opts = getSessionOptions({ secret: 'test-secret-minimum-32-chars-exact!', secure: false });
+    assert.strictEqual(opts.resave, false);
+  });
+
+  it('httpOnly is true so the session cookie is inaccessible to JavaScript', () => {
+    const opts = getSessionOptions({ secret: 'test-secret-minimum-32-chars-exact!', secure: false });
+    assert.strictEqual(opts.cookie.httpOnly, true);
+  });
+
+  it('sameSite is lax', () => {
+    const opts = getSessionOptions({ secret: 'test-secret-minimum-32-chars-exact!', secure: false });
+    assert.strictEqual(opts.cookie.sameSite, 'lax');
+  });
+
+  it('server enforces session validity: destroyed session returns 401 (simulates post-expiry state)', async () => {
+    // This test simulates what the server does after a session expires:
+    // it is removed from the store and subsequent requests with that cookie are rejected.
+    // We reproduce this by: logging in, confirming /me works, then directly destroying the
+    // session in the store (the same operation the pruner/expiry mechanism performs),
+    // and confirming /me now returns 401.
+    const mockUsers = new Map();
+    const userPass = 'VeryLongPasswordOverFifteenChars!';
+    const { hashPassword } = await import('../src/auth/password.js');
+    const hash = await hashPassword(userPass);
+    const userId = 'expiry-test-user-2';
+    mockUsers.set(userId, {
+      id: userId, email: 'expiry2@example.com', passwordHash: hash, createdAt: new Date(),
+    });
+
+    const mockFindUserByEmail = async (email) => {
+      const lower = email.trim().toLowerCase();
+      for (const u of mockUsers.values()) {
+        if (u.email.toLowerCase() === lower) return u;
+      }
+      return null;
+    };
+    const mockFindUserById = async (id) => mockUsers.get(id) || null;
+
+    const expiryLimiter = new RateLimiter({ windowMs: 60000, maxAttempts: 10, name: 'expiry-2' });
+    const { createAuthRouter } = await import('../src/routes/auth.routes.js');
+    const authRouter2 = createAuthRouter({
+      findUserByEmailFn: mockFindUserByEmail,
+      findUserByIdFn: mockFindUserById,
+      customLoginLimiter: expiryLimiter,
+      customRegisterLimiter: expiryLimiter,
+    });
+
+    // Use a normal 7-day session so the full lifecycle works without timing issues.
+    // We will destroy the session manually to simulate expiry enforcement.
+    const { default: sessionMiddleware } = await import('express-session');
+    const MemoryStore = sessionMiddleware.MemoryStore;
+    const store = new MemoryStore();
+    const normalSession = sessionMiddleware({
+      secret: 'test-secret-minimum-32-chars-exact!',
+      resave: false,
+      saveUninitialized: false,
+      store,
+      cookie: { httpOnly: true, sameSite: 'lax', secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 },
+    });
+
+    const { createApp } = await import('../src/app.js');
+    const expiryApp2 = createApp({
+      checkReadiness: async () => true,
+      sessionMiddleware: normalSession,
+      authRouter: authRouter2,
+    });
+
+    const agent = request.agent(expiryApp2);
+
+    // 1. Get CSRF token
+    const csrfRes = await agent.get('/api/auth/csrf').expect(200);
+    const token = csrfRes.body.csrfToken;
+
+    // 2. Login
+    const loginRes = await agent
+      .post('/api/auth/login')
+      .set('X-CSRF-Token', token)
+      .send({ email: 'expiry2@example.com', password: userPass })
+      .expect(200);
+    assert.ok(loginRes.body.user, 'Login must succeed');
+
+    // 3. Confirm /me works
+    await agent.get('/api/auth/me').expect(200);
+
+    // 4. Simulate session expiry by clearing all sessions from the store.
+    //    This is exactly what the prune timer does to expired sessions.
+    await new Promise((resolve, reject) => {
+      store.clear((err) => err ? reject(err) : resolve());
+    });
+
+    // 5. /me must now return 401 — the session no longer exists in the store.
+    const meRes = await agent.get('/api/auth/me');
+    assert.strictEqual(meRes.status, 401,
+      'Server must return 401 when session has been removed from store (simulating post-expiry state)');
+  });
+});

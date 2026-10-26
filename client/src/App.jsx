@@ -1,10 +1,20 @@
-import { useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext.jsx';
-import ProtectedRoute from './components/ProtectedRoute.jsx';
-import LoginPage from './pages/LoginPage.jsx';
-import RegisterPage from './pages/RegisterPage.jsx';
-import DashboardPage from './pages/DashboardPage.jsx';
+import { useEffect } from "react";
+import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext.jsx";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import AppLayout from "./layouts/AppLayout.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
+import RegisterPage from "./pages/RegisterPage.jsx";
+import DashboardPage from "./pages/DashboardPage.jsx";
+import NotesPage from "./pages/NotesPage.jsx";
+import QuestionsPage from "./pages/QuestionsPage.jsx";
+import DocumentsPage from "./pages/DocumentsPage.jsx";
+import TasksPage from "./pages/TasksPage.jsx";
+import InboxPage from "./pages/InboxPage.jsx";
+import WorkspacesPage from "./pages/WorkspacesPage.jsx";
+import RevisionPage from "./pages/RevisionPage.jsx";
+import JournalPage from "./pages/JournalPage.jsx";
+import NotFoundPage from "./pages/NotFoundPage.jsx";
 
 /**
  * LoginWithSuccessNotice wraps LoginPage and displays a transient success
@@ -16,7 +26,7 @@ function LoginWithSuccessNotice() {
   const navigate = useNavigate();
   const registrationSuccess = location.state?.registrationSuccess === true;
 
-  // Clear the state from history so a manual reload doesn't re-show the banner
+  // Clear the state from history so a manual reload does not re-show the banner
   useEffect(() => {
     if (registrationSuccess) {
       navigate(location.pathname, { replace: true, state: {} });
@@ -53,47 +63,25 @@ function LoginWithSuccessNotice() {
 }
 
 /**
- * AuthenticatedRoot — Redirects authenticated users away from the bare root
- * path to the dashboard, and unauthenticated users to /login.
- * Renders nothing while the session is being determined.
- */
-function AuthenticatedRoot() {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center bg-stone-50"
-        role="status"
-        aria-label="Loading…"
-      >
-        <div className="flex items-center gap-3 text-stone-500 text-sm">
-          <svg
-            className="h-5 w-5 animate-spin text-teal-700"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            />
-          </svg>
-          <span>Loading…</span>
-        </div>
-      </div>
-    );
-  }
-
-  return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />;
-}
-
-/**
- * AppRoutes — Declares all application routes.
- * Must be rendered inside AuthProvider and BrowserRouter (provided in main.jsx).
+ * AppRoutes - Declares all application routes.
+ *
+ * Public routes:
+ *   - /login, /register
+ *
+ * Authenticated routes (nested inside ProtectedRoute > AppLayout):
+ *   - / (index -> redirects to /dashboard)
+ *   - /dashboard (Today)
+ *   - /notes (Notes)
+ *   - /questions (Questions)
+ *   - /documents (Documents)
+ *   - /tasks (Tasks)
+ *   - /inbox (Inbox)
+ *   - /workspaces (Workspaces)
+ *   - /revision (Revision)
+ *   - /journal (Journal)
+ *
+ * Fallback:
+ *   - * (NotFoundPage)
  */
 function AppRoutes() {
   return (
@@ -102,27 +90,34 @@ function AppRoutes() {
       <Route path="/login" element={<LoginWithSuccessNotice />} />
       <Route path="/register" element={<RegisterPage />} />
 
-      {/* Protected routes */}
+      {/* Authenticated application shell */}
       <Route
-        path="/dashboard"
         element={
           <ProtectedRoute>
-            <DashboardPage />
+            <AppLayout />
           </ProtectedRoute>
         }
-      />
+      >
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="notes" element={<NotesPage />} />
+        <Route path="questions" element={<QuestionsPage />} />
+        <Route path="documents" element={<DocumentsPage />} />
+        <Route path="tasks" element={<TasksPage />} />
+        <Route path="inbox" element={<InboxPage />} />
+        <Route path="workspaces" element={<WorkspacesPage />} />
+        <Route path="revision" element={<RevisionPage />} />
+        <Route path="journal" element={<JournalPage />} />
+      </Route>
 
-      {/* Root redirect based on auth state */}
-      <Route path="/" element={<AuthenticatedRoot />} />
-
-      {/* Catch-all: redirect unknown routes to root which resolves auth state */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* Catch-all: show a friendly 404 page */}
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }
 
 /**
- * App — Top-level application component.
+ * App - Top-level application component.
  * Composes AuthProvider (which manages session state) around the route tree.
  * BrowserRouter is provided in main.jsx so that App itself remains testable.
  */

@@ -1,6 +1,6 @@
 import { useState, useId } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext.jsx';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/useAuth.js';
 import { ApiError } from '../services/auth.service.js';
 
 /** Minimum password length per backend policy */
@@ -58,8 +58,7 @@ export default function RegisterPage() {
 
   // Redirect if already authenticated
   if (isAuthenticated) {
-    navigate('/dashboard', { replace: true });
-    return null;
+    return <Navigate to="/dashboard" replace />;
   }
 
   const strength = getPasswordStrength(password);

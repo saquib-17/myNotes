@@ -1,70 +1,97 @@
-import { useState, useId } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext.jsx';
-import { ApiError } from '../services/auth.service.js';
+﻿import { useState, useId } from "react";
+import { Link, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../context/useAuth.js";
+import { ApiError } from "../services/auth.service.js";
 
 /**
- * LoginPage — Accessible login form with explicit loading, validation,
+ * Returns a safe internal redirect destination from router state.
+ * Rejects external URLs, protocol-relative URLs (//) and anything
+ * that does not look like an absolute internal path.
+ *
+ * @param {string|undefined} pathname
+ * @returns {string}
+ */
+function safeReturnPath(pathname) {
+  if (
+    typeof pathname !== "string" ||
+    !pathname.startsWith("/") ||
+    pathname.startsWith("//")
+  ) {
+    return "/dashboard";
+  }
+  // Reject anything containing a colon before the first slash (e.g. javascript:)
+  const colonIdx = pathname.indexOf(":");
+  const slashIdx = pathname.indexOf("/");
+  if (colonIdx !== -1 && (slashIdx === -1 || colonIdx < slashIdx)) {
+    return "/dashboard";
+  }
+  return pathname;
+}
+
+/**
+ * LoginPage - Accessible login form with explicit loading, validation,
  * and error feedback states.
  *
  * Password and email are validated client-side before submission to provide
  * immediate guidance, but the server is the authoritative source of truth.
  *
  * After successful login the user is redirected to the originally requested
- * private route (location.state.from), defaulting to '/dashboard'.
+ * private route (location.state.from), defaulting to /dashboard.
+ * External or protocol-relative redirect destinations are rejected.
  */
 export default function LoginPage() {
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || '/dashboard';
+  const from = safeReturnPath(location.state?.from?.pathname);
 
   const emailId = useId();
   const passwordId = useId();
   const errorId = useId();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState("");
 
-  // If already authenticated (e.g. browser back button), redirect away
+  // If already authenticated (e.g. browser back button), redirect away declaratively
   if (isAuthenticated) {
-    navigate(from, { replace: true });
-    return null;
+    return <Navigate to={from} replace />;
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setErrorMessage('');
+    setErrorMessage("");
 
     // Minimal client-side pre-checks (server validates fully)
     if (!email.trim()) {
-      setErrorMessage('Please enter your email address.');
+      setErrorMessage("Please enter your email address.");
       return;
     }
     if (!password) {
-      setErrorMessage('Please enter your password.');
+      setErrorMessage("Please enter your password.");
       return;
     }
 
+    if (isSubmitting) return; // Prevent duplicate submissions
     setIsSubmitting(true);
     try {
-      await login({ email: email.trim(), password });
+      // Email is not trimmed here - server normalizes email, password is never modified
+      await login({ email, password });
       navigate(from, { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
-        // 401 → generic message to avoid account enumeration
+        // 401 => generic message to avoid account enumeration
         if (err.status === 401) {
-          setErrorMessage('Invalid email or password. Please try again.');
+          setErrorMessage("Invalid email or password. Please try again.");
         } else if (err.status === 429) {
-          setErrorMessage('Too many login attempts. Please wait 15 minutes and try again.');
+          setErrorMessage("Too many login attempts. Please wait 15 minutes and try again.");
         } else {
-          setErrorMessage(err.message || 'Login failed. Please try again.');
+          setErrorMessage(err.message || "Login failed. Please try again.");
         }
       } else {
-        setErrorMessage('Unable to reach the server. Check your connection and try again.');
+        setErrorMessage("Unable to reach the server. Check your connection and try again.");
       }
     } finally {
       setIsSubmitting(false);
@@ -168,7 +195,7 @@ export default function LoginPage() {
                 <div className="relative">
                   <input
                     id={passwordId}
-                    type={showPassword ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
                     autoComplete="current-password"
                     required
                     value={password}
@@ -182,7 +209,7 @@ export default function LoginPage() {
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-stone-400 hover:text-stone-600 focus-visible:outline-2 focus-visible:outline-teal-700"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -211,7 +238,7 @@ export default function LoginPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    <span>Signing in…</span>
+                    <span>Signing in...</span>
                   </>
                 ) : (
                   <span>Sign in</span>
@@ -220,7 +247,7 @@ export default function LoginPage() {
             </form>
 
             <p className="mt-6 text-center text-sm text-stone-500">
-              Don&apos;t have an account?{' '}
+              Don&apos;t have an account?{" "}
               <Link
                 to="/register"
                 className="font-medium text-teal-700 hover:text-teal-800 hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700 rounded"

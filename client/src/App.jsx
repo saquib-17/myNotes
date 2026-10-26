@@ -1,10 +1,12 @@
-import { useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext.jsx';
-import ProtectedRoute from './components/ProtectedRoute.jsx';
-import LoginPage from './pages/LoginPage.jsx';
-import RegisterPage from './pages/RegisterPage.jsx';
-import DashboardPage from './pages/DashboardPage.jsx';
+import { useEffect } from "react";
+import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext.jsx";
+import { useAuth } from "./context/useAuth.js";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
+import RegisterPage from "./pages/RegisterPage.jsx";
+import DashboardPage from "./pages/DashboardPage.jsx";
+import NotFoundPage from "./pages/NotFoundPage.jsx";
 
 /**
  * LoginWithSuccessNotice wraps LoginPage and displays a transient success
@@ -16,7 +18,7 @@ function LoginWithSuccessNotice() {
   const navigate = useNavigate();
   const registrationSuccess = location.state?.registrationSuccess === true;
 
-  // Clear the state from history so a manual reload doesn't re-show the banner
+  // Clear the state from history so a manual reload does not re-show the banner
   useEffect(() => {
     if (registrationSuccess) {
       navigate(location.pathname, { replace: true, state: {} });
@@ -53,7 +55,7 @@ function LoginWithSuccessNotice() {
 }
 
 /**
- * AuthenticatedRoot — Redirects authenticated users away from the bare root
+ * AuthenticatedRoot - Redirects authenticated users away from the bare root
  * path to the dashboard, and unauthenticated users to /login.
  * Renders nothing while the session is being determined.
  */
@@ -65,7 +67,7 @@ function AuthenticatedRoot() {
       <div
         className="min-h-screen flex items-center justify-center bg-stone-50"
         role="status"
-        aria-label="Loading…"
+        aria-label="Loading..."
       >
         <div className="flex items-center gap-3 text-stone-500 text-sm">
           <svg
@@ -82,17 +84,17 @@ function AuthenticatedRoot() {
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             />
           </svg>
-          <span>Loading…</span>
+          <span>Loading...</span>
         </div>
       </div>
     );
   }
 
-  return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />;
+  return <Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />;
 }
 
 /**
- * AppRoutes — Declares all application routes.
+ * AppRoutes - Declares all application routes.
  * Must be rendered inside AuthProvider and BrowserRouter (provided in main.jsx).
  */
 function AppRoutes() {
@@ -115,14 +117,14 @@ function AppRoutes() {
       {/* Root redirect based on auth state */}
       <Route path="/" element={<AuthenticatedRoot />} />
 
-      {/* Catch-all: redirect unknown routes to root which resolves auth state */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* Catch-all: show a friendly 404 page */}
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }
 
 /**
- * App — Top-level application component.
+ * App - Top-level application component.
  * Composes AuthProvider (which manages session state) around the route tree.
  * BrowserRouter is provided in main.jsx so that App itself remains testable.
  */

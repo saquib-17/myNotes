@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import ConnectionStatus from '../components/ConnectionStatus.jsx';
 import { checkBackendHealth } from '../services/health.service.js';
-import { useAuth } from '../context/AuthContext.jsx';
+import { useAuth } from '../context/useAuth.js';
 
 /**
  * DashboardPage — Placeholder private workspace view for authenticated users.
@@ -15,6 +15,7 @@ export default function DashboardPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [lastChecked, setLastChecked] = useState(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
   const activeControllerRef = useRef(null);
 
   const performHealthCheck = useCallback(async () => {
@@ -50,12 +51,20 @@ export default function DashboardPage() {
   }, [performHealthCheck]);
 
   async function handleLogout() {
+    if (isLoggingOut) return;
+    setLogoutError('');
     setIsLoggingOut(true);
     try {
       await logout();
-      // AuthContext clears user; App routing will redirect to /login
+      // AuthContext clears user on confirmed server success; routing redirects to /login
     } catch {
+      // logout() threw — server session may not be destroyed.
+      // Do NOT silently clear state; show an honest error.
       setIsLoggingOut(false);
+      setLogoutError(
+        'Sign-out failed — your session may still be active on the server. ' +
+        'Try again or close the browser to end the session.'
+      );
     }
   }
 
@@ -127,6 +136,20 @@ export default function DashboardPage() {
 
       {/* Main content */}
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-8 sm:py-12 space-y-8">
+        {/* Logout error — shown honestly when server-side session destruction fails */}
+        {logoutError && (
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          >
+            <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+            </svg>
+            <span>{logoutError}</span>
+          </div>
+        )}
+
         {/* Welcome */}
         <section aria-labelledby="dashboard-heading" className="space-y-3">
           <h2 id="dashboard-heading" className="text-2xl font-bold tracking-tight text-stone-900">

@@ -1,157 +1,135 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import ConnectionStatus from './components/ConnectionStatus.jsx';
-import { checkBackendHealth } from './services/health.service.js';
+import { useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext.jsx';
+import ProtectedRoute from './components/ProtectedRoute.jsx';
+import LoginPage from './pages/LoginPage.jsx';
+import RegisterPage from './pages/RegisterPage.jsx';
+import DashboardPage from './pages/DashboardPage.jsx';
 
-export default function App() {
-  const [connectionStatus, setConnectionStatus] = useState('loading');
-  const [healthData, setHealthData] = useState(null);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [lastChecked, setLastChecked] = useState(null);
+/**
+ * LoginWithSuccessNotice wraps LoginPage and displays a transient success
+ * banner when the user arrives via a successful registration redirect.
+ * The notice is shown via router state; it does not persist across reloads.
+ */
+function LoginWithSuccessNotice() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const registrationSuccess = location.state?.registrationSuccess === true;
 
-  // Keep track of active controller for cancellation
-  const activeControllerRef = useRef(null);
-
-  const performHealthCheck = useCallback(async () => {
-    // Cancel any prior in-flight check
-    if (activeControllerRef.current) {
-      activeControllerRef.current.abort();
+  // Clear the state from history so a manual reload doesn't re-show the banner
+  useEffect(() => {
+    if (registrationSuccess) {
+      navigate(location.pathname, { replace: true, state: {} });
     }
-
-    const controller = new AbortController();
-    activeControllerRef.current = controller;
-
-    setConnectionStatus('loading');
-    setErrorMessage('');
-
-    const result = await checkBackendHealth(controller.signal);
-
-    // If aborted, do nothing as another request has taken over
-    if (result.isAborted) {
-      return;
-    }
-
-    setLastChecked(new Date());
-
-    if (result.ok && result.data) {
-      setConnectionStatus('connected');
-      setHealthData(result.data);
-    } else {
-      setConnectionStatus('error');
-      setHealthData(null);
-      setErrorMessage(result.error || 'Connection failed.');
-    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    performHealthCheck();
-
-    return () => {
-      if (activeControllerRef.current) {
-        activeControllerRef.current.abort();
-      }
-    };
-  }, [performHealthCheck]);
-
   return (
-    <div className="min-h-screen flex flex-col bg-stone-50 text-stone-900">
-      {/* Top Banner / Navigation Bar */}
-      <header className="border-b border-stone-200 bg-white/90 backdrop-blur-xs sticky top-0 z-10">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-teal-800 text-white flex items-center justify-center font-bold text-lg shadow-xs" aria-hidden="true">
-              M
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold tracking-tight text-stone-900 leading-none">
-                MyNotes
-              </h1>
-              <p className="text-xs text-stone-500 mt-0.5">
-                Personal Knowledge & Activity Workspace
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center rounded-full bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-800 border border-teal-200">
-              Stage 1 Foundation
-            </span>
-          </div>
+    <>
+      {registrationSuccess && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 rounded-xl border border-teal-200 bg-teal-50 px-5 py-3 text-sm font-medium text-teal-900 shadow-md"
+        >
+          <svg
+            className="h-4 w-4 text-teal-600 flex-shrink-0"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              fillRule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+              clipRule="evenodd"
+            />
+          </svg>
+          Account created successfully. Please sign in.
         </div>
-      </header>
+      )}
+      <LoginPage />
+    </>
+  );
+}
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-8 sm:py-12 space-y-8">
-        {/* Project Introduction */}
-        <section aria-labelledby="overview-heading" className="space-y-3">
-          <h2 id="overview-heading" className="text-2xl font-bold tracking-tight text-stone-900">
-            Runnable Local Foundation
-          </h2>
-          <p className="text-stone-600 text-sm sm:text-base leading-relaxed">
-            Welcome to the local development environment for <strong>MyNotes</strong>. This application is designed as a knowledge-first personal workspace built around the five-step loop:
-            <span className="font-medium text-stone-800"> Capture</span> →
-            <span className="font-medium text-stone-800"> Organize</span> →
-            <span className="font-medium text-stone-800"> Connect</span> →
-            <span className="font-medium text-stone-800"> Act</span> →
-            <span className="font-medium text-stone-800"> Review</span>.
-          </p>
-        </section>
+/**
+ * AuthenticatedRoot — Redirects authenticated users away from the bare root
+ * path to the dashboard, and unauthenticated users to /login.
+ * Renders nothing while the session is being determined.
+ */
+function AuthenticatedRoot() {
+  const { isAuthenticated, isLoading } = useAuth();
 
-        {/* Backend Connection Status Panel */}
-        <ConnectionStatus
-          status={connectionStatus}
-          data={healthData}
-          errorMessage={errorMessage}
-          lastChecked={lastChecked}
-          onRetry={performHealthCheck}
-        />
+  if (isLoading) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center bg-stone-50"
+        role="status"
+        aria-label="Loading…"
+      >
+        <div className="flex items-center gap-3 text-stone-500 text-sm">
+          <svg
+            className="h-5 w-5 animate-spin text-teal-700"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            />
+          </svg>
+          <span>Loading…</span>
+        </div>
+      </div>
+    );
+  }
 
-        {/* Architecture Foundation Summary */}
-        <section aria-labelledby="foundation-details-heading" className="rounded-xl border border-stone-200 bg-white p-6 shadow-xs space-y-4">
-          <h2 id="foundation-details-heading" className="text-base font-semibold text-stone-900">
-            Current Implementation Scope
-          </h2>
-          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm text-stone-600">
-            <li className="flex items-start gap-2.5 rounded-lg bg-stone-50 p-3 border border-stone-100">
-              <span className="text-teal-700 font-bold">✓</span>
-              <div>
-                <strong className="text-stone-800 block">Frontend SPA:</strong>
-                React + Vite in pure JavaScript with Tailwind CSS styling.
-              </div>
-            </li>
-            <li className="flex items-start gap-2.5 rounded-lg bg-stone-50 p-3 border border-stone-100">
-              <span className="text-teal-700 font-bold">✓</span>
-              <div>
-                <strong className="text-stone-800 block">Backend Server:</strong>
-                Node.js + Express with separate app and listener architecture.
-              </div>
-            </li>
-            <li className="flex items-start gap-2.5 rounded-lg bg-stone-50 p-3 border border-stone-100">
-              <span className="text-teal-700 font-bold">✓</span>
-              <div>
-                <strong className="text-stone-800 block">Development Proxy:</strong>
-                Vite proxies <code className="bg-stone-200/60 px-1 py-0.5 rounded text-xs">/api</code> requests to localhost:3000.
-              </div>
-            </li>
-            <li className="flex items-start gap-2.5 rounded-lg bg-stone-50 p-3 border border-stone-100">
-              <span className="text-teal-700 font-bold">✓</span>
-              <div>
-                <strong className="text-stone-800 block">Testing & Linting:</strong>
-                Automated tests using Node test runner + ESLint flat config.
-              </div>
-            </li>
-          </ul>
+  return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />;
+}
 
-          <div className="pt-2 text-xs text-stone-500 border-t border-stone-100 flex flex-col sm:flex-row justify-between gap-2">
-            <span>Next Stage: PostgreSQL Connection & Migrations (Stage 2)</span>
-            <span>No external accounts, cloud dependencies, or costs required.</span>
-          </div>
-        </section>
-      </main>
+/**
+ * AppRoutes — Declares all application routes.
+ * Must be rendered inside AuthProvider and BrowserRouter (provided in main.jsx).
+ */
+function AppRoutes() {
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route path="/login" element={<LoginWithSuccessNotice />} />
+      <Route path="/register" element={<RegisterPage />} />
 
-      {/* Footer */}
-      <footer className="border-t border-stone-200 bg-white py-6 text-center text-xs text-stone-400">
-        <p>MyNotes Stage 1 Foundation &bull; Running locally</p>
-      </footer>
-    </div>
+      {/* Protected routes */}
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Root redirect based on auth state */}
+      <Route path="/" element={<AuthenticatedRoot />} />
+
+      {/* Catch-all: redirect unknown routes to root which resolves auth state */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+/**
+ * App — Top-level application component.
+ * Composes AuthProvider (which manages session state) around the route tree.
+ * BrowserRouter is provided in main.jsx so that App itself remains testable.
+ */
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
   );
 }

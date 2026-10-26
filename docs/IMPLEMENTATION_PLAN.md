@@ -9,7 +9,7 @@ This document details the stage-by-stage implementation plan for MyNotes. Each s
 - **Stage 0:** Planning and Project Rules *(Completed)*
 - **Stage 1:** Repository and Runnable Frontend/Backend Foundation *(Completed)*
 - **Stage 2:** PostgreSQL Connection and Migrations *(Completed)*
-- **Stage 3:** Authentication and Private Access *(Stage 3A completed; Stage 3B pending)*
+- **Stage 3:** Authentication and Private Access *(Completed)*
 - **Stage 4:** Application Shell and Navigation
 - **Stage 5:** Core Notes Workflow
 - **Stage 6:** Note Organization and Recovery
@@ -124,7 +124,7 @@ This document details the stage-by-stage implementation plan for MyNotes. Each s
 
 ---
 
-### Stage 3: Authentication and Private Access *(In Progress)*
+### Stage 3: Authentication and Private Access *(Completed)*
 
 #### Stage 3A: Authentication Backend and PostgreSQL-Backed Sessions *(Completed)*
 
@@ -155,25 +155,32 @@ This document details the stage-by-stage implementation plan for MyNotes. Each s
   - Lint and audit verification across workspaces.
 - **Explicit Exclusions:** Frontend auth screens, OAuth, password reset email delivery, multi-factor authentication (MFA), business domain tables.
 
-#### Stage 3B: Frontend Authentication Screens & Private Navigation *(Pending / Next Stage)*
+#### Stage 3B: Frontend Authentication Screens & Private Navigation *(Completed)*
 
 - **Objective:** Build client-side AuthContext, accessible Login and Registration forms with explicit loading/error states, CSRF token management, and authenticated route protection.
 - **Dependencies:** Stage 3A backend foundation.
 - **Tasks:**
-  1. Create client-side `AuthContext` managing user state, login, register, logout, and CSRF token fetching.
-  2. Implement Login view with accessible form controls, validation, and error feedback.
-  3. Implement Registration view with password strength guidance matching the 15-character policy.
-  4. Implement `ProtectedRoute` component redirecting unauthenticated users to `/login`.
-  5. Update navigation header/shell to show current authenticated user and Logout button.
-  6. Write automated frontend tests verifying form validation, login flows, and route protection.
+  1. Install `react-router-dom` (`^7.0.0`) in `client/`.
+  2. Create `client/src/context/AuthContext.jsx` — manages user state, session restore on mount (via `/api/auth/me`), CSRF token held in a JS heap ref (never in browser storage), login/register/logout actions.
+  3. Create `client/src/services/auth.service.js` — typed API wrappers for all `/api/auth` endpoints with `ApiError` class for typed server error handling.
+  4. Create `client/src/components/ProtectedRoute.jsx` — guards private routes, shows spinner during session restore, redirects with `state.from` for post-login return.
+  5. Create `client/src/pages/LoginPage.jsx` — accessible form with show/hide password toggle, error feedback, 401/429 mapping, post-login redirect to `state.from || /dashboard`.
+  6. Create `client/src/pages/RegisterPage.jsx` — accessible form with live password strength meter, confirm-password match validation, post-registration redirect to `/login` with success state.
+  7. Create `client/src/pages/DashboardPage.jsx` — placeholder private workspace with user identity display, logout button, and backend health panel.
+  8. Rewrite `client/src/App.jsx` — wires router, `AuthProvider`, `ProtectedRoute`, and a transient registration-success banner. `BrowserRouter` placed in `main.jsx`.
+  9. Update `client/index.html` page title to reflect Stage 3B.
 - **Acceptance Criteria:**
-  - Client state reflects authenticated user across page reloads.
-  - Unauthenticated users cannot access private application views.
-  - Clean error feedback on invalid credentials, duplicate registrations, and network errors.
+  - Client state reflects authenticated user across page reloads (session cookie + `/api/auth/me` restore).
+  - Unauthenticated users are redirected to `/login`; post-login redirect targets originally requested route.
+  - Clean error feedback on invalid credentials (401), duplicate registrations (409), rate-limit hits (429), and network errors.
+  - CSRF tokens never stored in `localStorage` or `sessionStorage`; held only in JS heap memory.
+  - `npm run build` and `npm run lint` in `client/` pass with 0 errors.
+  - All 21/21 server tests continue to pass; server lint clean.
 - **Verification Approach:**
-  - Frontend component and integration tests.
-  - Manual verification through Vite development proxy.
-- **Explicit Exclusions:** Domain views (Notes, Tasks), OAuth, account recovery forms.
+  - `npm run build` and `npm run lint` in `client/`.
+  - `npm test` and `npm run lint` in `server/`.
+  - Manual verification through Vite development proxy at `http://localhost:5173`.
+- **Explicit Exclusions:** Domain views (Notes, Tasks), OAuth, account recovery forms, automated frontend component tests (deferred to Stage 4 when the full shell is in place).
 
 ---
 

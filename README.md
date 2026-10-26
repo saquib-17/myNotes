@@ -42,15 +42,18 @@ Capture  ──►  Organize  ──►  Connect  ──►  Act  ──►  Rev
 
 ## Current Status
 
-> **Stage 3A Completed: Authentication Backend and PostgreSQL-Backed Sessions**
+> **Stage 5A Completed: Private Notes Schema, REST API & Backend Verification**
 >
-> Secure backend authentication and PostgreSQL session persistence are fully operational.
-> - **Session Store:** `express-session` backed by `connect-pg-simple` storing server-side sessions in PostgreSQL (`"session"` table).
-> - **Password Hashing:** Argon2id with explicit OWASP parameters (`19 MiB` memory, `2` iterations, `1` lane). Constant-time dummy verification protects against account enumeration.
-> - **Password Policy:** Minimum 15 characters, maximum 128 characters, allowing spaces and Unicode without silent truncation.
-> - **CSRF Protection:** Synchronizer tokens bound to sessions (`GET /api/auth/csrf`, `X-CSRF-Token` header) and strict Origin header validation.
-> - **Endpoints:** `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` (`requireAuth`), `POST /api/auth/logout`.
-> - **Next Stage:** **Stage 3B — Frontend Authentication Screens & Private Navigation** (AuthContext, login/register forms, protected views).
+> Secure, ownership-scoped notes REST API, rich-text schema validation, and optimistic concurrency are fully operational.
+> - **Database Schema:** `notes` table with UUID primary key, `user_id` foreign key (`ON DELETE RESTRICT`), `title`, `content_json` (JSONB), `content_text` (TEXT), `version` (positive integer), `deleted_at` (soft delete), and partial composite index for active user note queries.
+> - **Rich-Text Validation:** Strict ProseMirror/Tiptap node & mark whitelist (`doc`, `paragraph`, `heading` levels 1-3, `bulletList`, `orderedList`, `listItem`, `blockquote`, `codeBlock`, `hardBreak`, `horizontalRule`, and `text` with `bold`, `italic`, `strike`, `code`). Enforces limits: 200 char title, 256 KiB content, max depth 20, max 5,000 nodes.
+> - **Derived Plain Text & Previews:** Automatically extracts plain text for search indexing and generates single-line bounded previews.
+> - **Search Semantics:** Case-insensitive search across title and content text with literal SQL wildcard (`%`, `_`, `\`) escaping.
+> - **Optimistic Concurrency:** Atomic version increments (`version + 1`) with `expectedVersion` check returning `409 Conflict` (`NOTE_VERSION_CONFLICT`) upon stale edits.
+> - **Soft Deletion:** `POST /api/notes/:id/trash` soft-deletes notes with version tracking; excluded from active queries.
+> - **Security:** Protected by `requireAuth`, `requireCsrf`, strict Origin checks, and `Cache-Control: no-store`.
+> - **Endpoints:** `POST /api/notes`, `GET /api/notes`, `GET /api/notes/:id`, `PATCH /api/notes/:id`, `POST /api/notes/:id/trash`.
+> - **Next Stage:** **Stage 5B — Frontend Rich-Text Editor & Core Notes UI** (Tiptap integration, autosave, note listing).
 
 ---
 

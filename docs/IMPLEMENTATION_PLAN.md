@@ -207,29 +207,28 @@ This document details the stage-by-stage implementation plan for MyNotes. Each s
 
 ### Stage 5: Core Notes Workflow
 
-- **Objective:** Implement the primary note-taking experience with Tiptap rich-text editing, code syntax highlighting, continuous autosave, and plain-text search indexing.
+- **Objective:** Implement private notes schema, REST API, optimistic concurrency, and backend verification (Stage 5A), followed by Tiptap rich-text editing, continuous autosave, and frontend notes UI (Stage 5B/5C).
 - **Dependencies:** Stage 4 application shell.
-- **Tasks:**
-  1. Create migration `002_create_notes.sql` (`id`, `user_id`, `title`, `content_json`, `content_text`, `is_pinned`, `is_favorite`, `is_archived`, `is_trashed`, `created_at`, `updated_at`).
-  2. Implement backend note CRUD endpoints:
-     - `GET /api/notes` (with search and filters)
-     - `POST /api/notes`
-     - `GET /api/notes/:id`
-     - `PUT /api/notes/:id`
-     - `DELETE /api/notes/:id` (soft delete)
-  3. Implement backend Tiptap-to-plaintext extractor to populate `content_text` on every update.
-  4. Integrate Tiptap editor in the frontend with support for Headings, Lists, Blockquotes, Links, and Code Blocks.
-  5. Implement autosave hook with clear UI status (`Unsaved`, `Saving...`, `Saved at HH:mm`, `Error`).
-  6. Add unit and integration tests for note CRUD and ownership verification.
-- **Acceptance Criteria:**
-  - Rich-text and code blocks persist and reload accurately without layout distortion.
-  - Autosave operates debounced without dropping keystrokes or overwriting newer changes.
-  - Users can only read and modify their own notes.
-  - Content is searchable via backend query.
+- **Sub-Stages:**
+  - **Stage 5A: Private Notes Schema, REST API & Backend Verification (Completed):**
+    - Migration `1700000000002_create-notes.sql`: `notes` table with UUID primary key, `user_id` FK (`ON DELETE RESTRICT`), `title`, `content_json` (JSONB), `content_text` (TEXT), `version` (INT), `created_at`, `updated_at`, `deleted_at`. Partial index on `(user_id, updated_at DESC, id ASC) WHERE deleted_at IS NULL`.
+    - Content validation: `server/src/notes/contentValidator.js` enforcing ProseMirror/Tiptap schema, title normalization (1-200 chars), max content 256 KiB, max depth 20, max 5,000 nodes.
+    - Derived text: extracts `content_text` and single-line preview (150 chars).
+    - REST endpoints: `POST /api/notes`, `GET /api/notes`, `GET /api/notes/:id`, `PATCH /api/notes/:id`, `POST /api/notes/:id/trash`.
+    - Optimistic concurrency: `expectedVersion` check returns `409 Conflict` (`NOTE_VERSION_CONFLICT`) on stale updates.
+    - Security: `requireAuth`, `requireCsrf`, Origin validation, `Cache-Control: no-store`.
+    - Unit, route, and PostgreSQL integration tests (55 tests + 11 live DB assertions).
+  - **Stage 5B: Frontend Rich-Text Editor & Core Notes UI (Pending):**
+    - Tiptap editor integration supporting headings, lists, blockquotes, and code blocks.
+    - Notes list page with real-time preview, search, and pagination.
+    - Autosave with debounced dispatch and conflict notification.
+  - **Stage 5C: Editor Polish, Shortcuts & End-to-End Verification (Pending).**
 - **Verification Approach:**
-  - Automated API tests for note ownership enforcement and CRUD operations.
-  - End-to-end browser check of editor typing, autosave trigger, and page refresh persistence.
-- **Explicit Exclusions:** Nested folder hierarchies, version history diffs, PDF export.
+  - Server test suite: `npm test` in `server/` (55 tests passing).
+  - Server linter: `npm run lint` in `server/` (0 errors, 0 warnings).
+  - Controlled PostgreSQL integration check: `node test/integrationCheck.js` in `server/`.
+  - Frontend regressions: `npm test`, `npm run lint`, and `npm run build` in `client/`.
+- **Explicit Exclusions:** Collections, tags, favorites, pinned notes, attachments, version history snapshots, trash restore UI, permanent deletion.
 
 ---
 

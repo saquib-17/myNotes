@@ -1,0 +1,239 @@
+import { getPool } from '../db/pool.js';
+
+/**
+ * Escapes characters with special meaning in SQL LIKE patterns (%, _, \).
+ *
+ * @param {string} str
+ * @returns {string}
+ */
+export function escapeLikeWildcards(str) {
+  return str.replace(/[\\%_]/g, '\\$&');
+}
+
+/**
+ * Creates a new note in the database.
+ *
+ * @param {object} params
+ * @param {string} params.userId
+ * @param {string} params.title
+ * @param {object} params.contentJson
+ * @param {string} params.contentText
+ * @param {import('pg').Pool} [params.pool]
+ * @returns {Promise<object>} Created note record
+ */
+export async function createNote({
+  userId,
+  title,
+  contentJson,
+  contentText,
+  pool = getPool(),
+}) {
+  const query = `
+    INSERT INTO notes (user_id, title, content_json, content_text, version)
+    VALUES ($1, $2, $3, $4, 1)
+    RETURNING id, title, content_json AS content, version, created_at AS "createdAt", updated_at AS "updatedAt";
+  `;
+
+  const values = [userId, title, JSON.stringify(contentJson), contentText];
+  const result = await pool.query(query, values);
+  return result.rows[0];
+}
+
+/**
+ * Lists active notes for an authenticated user with optional search and pagination.
+ *
+ * @param {object} params
+ * @param {string} params.userId
+ * @param {string} [params.q] - Search query
+ * @param {number} [params.limit=20]
+ * @param {number} [params.offset=0]
+ * @param {import('pg').Pool} [params.pool]
+ * @returns {Promise<{ items: object[], limit: number, offset: number, hasMore: boolean }>}
+ */
+export async function findNotesByUserId({
+  userId,
+  q = '',
+  limit = 20,
+  offset = 0,
+  pool = getPool(),
+}) {
+  const conditions = ['user_id = $1', 'deleted_at IS NULL'];
+  const values = [userId];
+
+  const trimmedQuery = typeof q === 'string' ? q.trim() : '';
+  if (trimmedQuery.length > 0) {
+    const escaped = escapeLikeWildcards(trimmedQuery);
+    values.push(`%${escaped}%`);
+    const paramIdx = values.length;
+    conditions.push(
+      `(title ILIKE $${paramIdx} ESCAPE '\\' OR content_text ILIKE $${paramIdx} ESCAPE '\\')`
+    );
+  }
+
+  // Request limit + 1 rows to detect hasMore without an extra COUNT(*) query
+  values.push(limit + 1);
+  const limitParamIdx = values.length;
+
+  values.push(offset);
+  const offsetParamIdx = values.length;
+
+  const query = `
+    SELECT id, title, content_text, version, created_at AS "createdAt", updated_at AS "updatedAt"
+    FROM notes
+    WHERE ${conditions.join(' AND ')}
+    ORDER BY updated_at DESC, id ASC
+    LIMIT $${limitParamIdx} OFFSET $${offsetParamIdx};
+  `;
+
+  const result = await pool.query(query, values);
+  const hasMore = result.rows.length > limit;
+  const rawItems = hasMore ? result.rows.slice(0, limit) : result.rows;
+
+  return {
+    rawItems,
+    limit,
+    offset,
+    hasMore,
+  };
+}
+
+/**
+ * Finds a single active note by ID scoped to the authenticated owner.
+ *
+ * @param {object} params
+ * @param {string} params.id - Note UUID
+ * @param {string} params.userId - Owner UUID
+ * @param {import('pg').Pool} [params.pool]
+ * @returns {Promise<object|null>}
+ */
+export async function findNoteByIdAndUserId({
+  id,
+  userId,
+  pool = getPool(),
+}) {
+  const query = `
+    SELECT id, title, content_json AS content, version, created_at AS "createdAt", updated_at AS "updatedAt"
+    FROM notes
+    WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL;
+  `;
+
+  const result = await pool.query(query, [id, userId]);
+  return result.rows[0] || null;
+}
+
+/**
+ * Conditionally updates an active note using optimistic concurrency.
+ *
+ * @param {object} params
+ * @param {string} params.id
+ * @param {string} params.userId
+ * @param {number} params.expectedVersion
+ * @param {string} params.title
+ * @param {object} params.contentJson
+ * @param {string} params.contentText
+ * @param {import('pg').Pool} [params.pool]
+ * @returns {Promise<{ updatedNote?: object, notFound?: boolean, conflict?: boolean }>}
+ */
+export async function updateNote({
+  id,
+  userId,
+  expectedVersion,
+  title,
+  contentJson,
+  contentText,
+  pool = getPool(),
+}) {
+  const updateQuery = `
+    UPDATE notes
+    SET title = $1,
+        content_json = $2,
+        content_text = $3,
+        version = version + 1,
+        updated_at = now()
+    WHERE id = $4
+      AND user_id = $5
+      AND deleted_at IS NULL
+      AND version = $6
+    RETURNING id, title, content_json AS content, version, created_at AS "createdAt", updated_at AS "updatedAt";
+  `;
+
+  const values = [
+    title,
+    JSON.stringify(contentJson),
+    contentText,
+    id,
+    userId,
+    expectedVersion,
+  ];
+
+  const result = await pool.query(updateQuery, values);
+  if (result.rowCount === 1) {
+    return { updatedNote: result.rows[0] };
+  }
+
+  // Row not updated: disambiguate notFound vs conflict without exposing other user data
+  const checkQuery = `
+    SELECT user_id, version, deleted_at
+    FROM notes
+    WHERE id = $1;
+  `;
+
+  const checkResult = await pool.query(checkQuery, [id]);
+  const row = checkResult.rows[0];
+
+  if (!row || row.user_id !== userId || row.deleted_at !== null) {
+    return { notFound: true };
+  }
+
+  return { conflict: true, currentVersion: row.version };
+}
+
+/**
+ * Soft-deletes a note to trash using optimistic concurrency.
+ *
+ * @param {object} params
+ * @param {string} params.id
+ * @param {string} params.userId
+ * @param {number} params.expectedVersion
+ * @param {import('pg').Pool} [params.pool]
+ * @returns {Promise<{ success?: boolean, notFound?: boolean, conflict?: boolean }>}
+ */
+export async function trashNote({
+  id,
+  userId,
+  expectedVersion,
+  pool = getPool(),
+}) {
+  const trashQuery = `
+    UPDATE notes
+    SET deleted_at = now(),
+        updated_at = now(),
+        version = version + 1
+    WHERE id = $1
+      AND user_id = $2
+      AND deleted_at IS NULL
+      AND version = $3
+    RETURNING id;
+  `;
+
+  const result = await pool.query(trashQuery, [id, userId, expectedVersion]);
+  if (result.rowCount === 1) {
+    return { success: true };
+  }
+
+  // Disambiguate notFound vs conflict
+  const checkQuery = `
+    SELECT user_id, version, deleted_at
+    FROM notes
+    WHERE id = $1;
+  `;
+
+  const checkResult = await pool.query(checkQuery, [id]);
+  const row = checkResult.rows[0];
+
+  if (!row || row.user_id !== userId || row.deleted_at !== null) {
+    return { notFound: true };
+  }
+
+  return { conflict: true, currentVersion: row.version };
+}

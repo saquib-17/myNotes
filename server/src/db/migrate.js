@@ -70,6 +70,20 @@ async function runMigrations() {
           );
         }
       }
+
+      // Check if migration 1700000000002 has been recorded
+      const appliedNotesMigration = await pool.query(
+        "SELECT 1 FROM pgmigrations WHERE name LIKE '%1700000000002%';"
+      );
+      if (appliedNotesMigration.rows.length === 0) {
+        const hasNotes = await pool.query("SELECT to_regclass('public.notes') AS ref;");
+        if (hasNotes.rows[0]?.ref !== null) {
+          throw new Error(
+            'Collision detected: Table "notes" already exists prior to running migration 1700000000002. ' +
+            'Refusing to overwrite unmanaged schema.'
+          );
+        }
+      }
     }
 
     // Execute migrations via node-pg-migrate runner

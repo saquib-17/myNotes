@@ -5,6 +5,7 @@ import session from 'express-session';
 import healthRoutes from './routes/health.routes.js';
 import readyRoutes, { createReadyRouter } from './routes/ready.routes.js';
 import authRoutes from './routes/auth.routes.js';
+import notesRoutes from './routes/notes.routes.js';
 import { getSessionOptions } from './config/session.config.js';
 import { getSessionStore } from './auth/sessionStore.js';
 
@@ -30,12 +31,14 @@ function getDefaultSessionMiddleware() {
  * @param {() => Promise<boolean>} [options.checkReadiness] - Injected database readiness checker
  * @param {import('express').RequestHandler} [options.sessionMiddleware] - Custom or in-memory session middleware
  * @param {import('express').Router} [options.authRouter] - Injected authentication router
+ * @param {import('express').Router} [options.notesRouter] - Injected notes router
  * @returns {express.Express}
  */
 export function createApp({
   checkReadiness,
   sessionMiddleware,
   authRouter,
+  notesRouter,
 } = {}) {
   const app = express();
 
@@ -56,8 +59,8 @@ export function createApp({
     credentials: true,
   }));
 
-  // Request parsing with sensible payload limit
-  app.use(express.json({ limit: '100kb' }));
+  // Request parsing bounded at 512 KiB to accommodate rich-text note documents
+  app.use(express.json({ limit: '512kb' }));
 
   // Process Health and Database Readiness Endpoints
   // Mounted BEFORE session middleware so health checks never instantiate sessions or cookies
@@ -67,7 +70,7 @@ export function createApp({
     checkReadiness ? createReadyRouter({ checkReadiness }) : readyRoutes
   );
 
-  // Authentication routes with scoped session middleware
+  // Authentication and Private Notes routes with scoped session middleware
   const resolvedSessionMiddleware =
     sessionMiddleware !== undefined
       ? sessionMiddleware
@@ -75,8 +78,10 @@ export function createApp({
 
   if (resolvedSessionMiddleware) {
     app.use('/api/auth', resolvedSessionMiddleware, authRouter || authRoutes);
+    app.use('/api/notes', resolvedSessionMiddleware, notesRouter || notesRoutes);
   } else {
     app.use('/api/auth', authRouter || authRoutes);
+    app.use('/api/notes', notesRouter || notesRoutes);
   }
 
   // Fallback for unknown API routes - returns structured JSON 404
@@ -91,18 +96,22 @@ export function createApp({
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
     const isProduction = process.env.NODE_ENV === 'production';
-    const statusCode = err.status || err.statusCode || 500;
+    const statusCode = err.type === 'entity.too.large' ? 413 : (err.status || err.statusCode || 500);
 
     // Log on server for diagnostics (suppress during automated test runs)
     if (process.env.NODE_ENV !== 'test') {
       console.error(`[Server Error] ${err.name || 'Error'}: ${err.message}`);
     }
 
+    const isPayloadTooLarge = statusCode === 413 || err.type === 'entity.too.large';
+
     res.status(statusCode).json({
-      error: err.name || 'InternalServerError',
-      message: isProduction && statusCode === 500
-        ? 'An unexpected error occurred on the server.'
-        : err.message || 'Internal Server Error',
+      error: isPayloadTooLarge ? 'PayloadTooLarge' : (err.name || 'InternalServerError'),
+      message: isPayloadTooLarge
+        ? 'Request payload exceeds the maximum allowed size.'
+        : (isProduction && statusCode === 500
+          ? 'An unexpected error occurred on the server.'
+          : err.message || 'Internal Server Error'),
       ...(isProduction ? {} : { stack: err.stack }),
     });
   });

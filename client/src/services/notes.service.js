@@ -10,10 +10,17 @@
 import { ApiError } from './auth.service.js';
 
 const API_BASE = '/api/notes';
+const COLLECTIONS_API_BASE = '/api/collections';
+const TAGS_API_BASE = '/api/tags';
 
 export const NOTE_LIMITS = {
   MAX_TITLE_LENGTH: 200,
   MAX_CONTENT_BYTES: 256 * 1024, // 256 KiB
+};
+
+export const TAG_LIMITS = {
+  MAX_NAME_LENGTH: 40,
+  MAX_TAGS_PER_NOTE: 20,
 };
 
 /**
@@ -56,6 +63,25 @@ export function validateClientNote(title, content) {
 }
 
 /**
+ * Validates a tag name on the client before submission.
+ *
+ * @param {string} name
+ */
+export function validateClientTagName(name) {
+  if (typeof name !== 'string') {
+    throw new Error('Tag name must be a string.');
+  }
+  const trimmed = name.trim().replace(/\s+/g, ' ');
+  if (trimmed.length === 0) {
+    throw new Error('Tag name cannot be empty or blank.');
+  }
+  if (trimmed.length > TAG_LIMITS.MAX_NAME_LENGTH) {
+    throw new Error(`Tag name cannot exceed ${TAG_LIMITS.MAX_NAME_LENGTH} characters.`);
+  }
+  return trimmed;
+}
+
+/**
  * Fetches paginated notes for the authenticated user, optionally filtered by search query.
  *
  * @param {object} params
@@ -65,12 +91,14 @@ export function validateClientNote(title, content) {
  * @param {AbortSignal} [params.signal] - Optional abort signal
  * @returns {Promise<{ notes: Array<object>, total: number, limit: number, offset: number, hasMore: boolean }>}
  */
-export async function fetchNotes({ q = '', collectionId, limit = 20, offset = 0, signal } = {}) {
+export async function fetchNotes({ q = '', collectionId, tagId, tag, limit = 20, offset = 0, signal } = {}) {
   const params = new URLSearchParams();
   if (limit) params.set('limit', String(limit));
   if (offset) params.set('offset', String(offset));
   if (q && q.trim()) params.set('q', q.trim());
   if (collectionId) params.set('collectionId', collectionId);
+  if (tagId) params.set('tagId', tagId);
+  if (tag) params.set('tag', tag);
 
   const response = await fetch(`${API_BASE}?${params.toString()}`, {
     method: 'GET',
@@ -93,8 +121,8 @@ export async function fetchNotes({ q = '', collectionId, limit = 20, offset = 0,
     Array.isArray(data.notes)
       ? data.notes
       : Array.isArray(data.items)
-      ? data.items
-      : []
+        ? data.items
+        : []
   ).map((note) => ({
     ...note,
     pinned: Boolean(note.pinned),
@@ -151,7 +179,7 @@ export async function fetchNoteById(id, { signal } = {}) {
  * @param {string} params.csrfToken
  * @returns {Promise<{ id: string, title: string, content: object, version: number, createdAt: string, updatedAt: string }>}
  */
-export async function createNote({ title = '', content, collectionId, csrfToken }) {
+export async function createNote({ title = '', content, collectionId, tags, csrfToken }) {
   if (!csrfToken) {
     throw new Error('CSRF token is required for note creation.');
   }
@@ -166,6 +194,9 @@ export async function createNote({ title = '', content, collectionId, csrfToken 
   }
   if (collectionId !== undefined && collectionId !== null) {
     payload.collectionId = collectionId;
+  }
+  if (Array.isArray(tags)) {
+    payload.tags = tags;
   }
 
   const response = await fetch(API_BASE, {
@@ -203,7 +234,7 @@ export async function createNote({ title = '', content, collectionId, csrfToken 
  * @param {string} params.csrfToken
  * @returns {Promise<{ id: string, title: string, content: object, version: number, createdAt: string, updatedAt: string }>}
  */
-export async function updateNote(id, { title, content, expectedVersion, pinned, collectionId, csrfToken }) {
+export async function updateNote(id, { title, content, expectedVersion, pinned, collectionId, tags, csrfToken }) {
   if (!csrfToken) {
     throw new Error('CSRF token is required for note update.');
   }
@@ -223,6 +254,9 @@ export async function updateNote(id, { title, content, expectedVersion, pinned, 
   }
   if (collectionId !== undefined) {
     payload.collectionId = collectionId;
+  }
+  if (Array.isArray(tags)) {
+    payload.tags = tags;
   }
 
   const response = await fetch(`${API_BASE}/${id}`, {
@@ -408,8 +442,8 @@ export async function fetchTrashedNotes({ limit = 20, offset = 0, signal } = {})
     Array.isArray(data.notes)
       ? data.notes
       : Array.isArray(data.items)
-      ? data.items
-      : []
+        ? data.items
+        : []
   ).map((note) => ({
     ...note,
     pinned: Boolean(note.pinned),
@@ -468,8 +502,6 @@ export async function restoreNote(id, { csrfToken }) {
   };
 }
 
-const COLLECTIONS_API_BASE = '/api/collections';
-
 export const COLLECTION_LIMITS = {
   MAX_NAME_LENGTH: 80,
 };
@@ -511,8 +543,8 @@ export async function fetchCollections({ signal } = {}) {
   const items = Array.isArray(data.collections)
     ? data.collections
     : Array.isArray(data.items)
-    ? data.items
-    : [];
+      ? data.items
+      : [];
 
   return {
     ...data,
@@ -679,8 +711,8 @@ export async function fetchCollectionNotes(id, { q = '', limit = 20, offset = 0,
     Array.isArray(data.notes)
       ? data.notes
       : Array.isArray(data.items)
-      ? data.items
-      : []
+        ? data.items
+        : []
   ).map((note) => ({
     ...note,
     pinned: Boolean(note.pinned),
@@ -698,6 +730,213 @@ export async function fetchCollectionNotes(id, { q = '', limit = 20, offset = 0,
     total: normalizedTotal,
     hasMore: Boolean(data.hasMore),
     collection: data.collection,
+  };
+}
+
+/**
+ * Fetches all active tags owned by the authenticated user with note counts.
+ *
+ * @param {object} [options]
+ * @param {AbortSignal} [options.signal]
+ * @returns {Promise<Array<{ id: string, name: string, noteCount: number, createdAt: string, updatedAt: string }>>}
+ */
+export async function fetchTags({ signal } = {}) {
+  const response = await fetch(TAGS_API_BASE, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to fetch tags (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return Array.isArray(data.tags) ? data.tags : Array.isArray(data.items) ? data.items : [];
+}
+
+/**
+ * Creates a new tag.
+ *
+ * @param {object} params
+ * @param {string} params.name
+ * @param {string} params.csrfToken
+ * @returns {Promise<{ id: string, name: string, createdAt: string, updatedAt: string }>}
+ */
+export async function createTag({ name, csrfToken }) {
+  if (!csrfToken) {
+    throw new Error('CSRF token is required for tag creation.');
+  }
+
+  const normalized = validateClientTagName(name);
+
+  const response = await fetch(TAGS_API_BASE, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'X-Csrf-Token': csrfToken,
+    },
+    body: JSON.stringify({ name: normalized }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to create tag (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Renames an existing tag.
+ *
+ * @param {string} id - Tag UUID
+ * @param {object} params
+ * @param {string} params.name
+ * @param {string} params.csrfToken
+ * @returns {Promise<{ id: string, name: string, createdAt: string, updatedAt: string }>}
+ */
+export async function updateTag(id, { name, csrfToken }) {
+  if (!csrfToken) {
+    throw new Error('CSRF token is required for tag update.');
+  }
+
+  const normalized = validateClientTagName(name);
+
+  const response = await fetch(`${TAGS_API_BASE}/${id}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'X-Csrf-Token': csrfToken,
+    },
+    body: JSON.stringify({ name: normalized }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to update tag (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Deletes a tag (soft delete, unlinking all note associations while keeping notes intact).
+ *
+ * @param {string} id - Tag UUID
+ * @param {object} params
+ * @param {string} params.csrfToken
+ * @returns {Promise<void>}
+ */
+export async function deleteTag(id, { csrfToken }) {
+  if (!csrfToken) {
+    throw new Error('CSRF token is required to delete a tag.');
+  }
+
+  const response = await fetch(`${TAGS_API_BASE}/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      'X-Csrf-Token': csrfToken,
+    },
+  });
+
+  if (response.status === 204) {
+    return;
+  }
+
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    // Non-JSON response
+  }
+
+  throw new ApiError(
+    data?.message || `Failed to delete tag (HTTP ${response.status})`,
+    response.status,
+    data?.code || data?.error
+  );
+}
+
+/**
+ * Fetches notes belonging to a specific tag.
+ *
+ * @param {string} id
+ * @param {object} params
+ * @param {string} [params.q]
+ * @param {number} [params.limit=20]
+ * @param {number} [params.offset=0]
+ * @param {AbortSignal} [params.signal]
+ * @returns {Promise<{ notes: Array<object>, items: Array<object>, total: number, hasMore: boolean, tag: object }>}
+ */
+export async function fetchTagNotes(id, { q = '', limit = 20, offset = 0, signal } = {}) {
+  const params = new URLSearchParams();
+  if (limit) params.set('limit', String(limit));
+  if (offset) params.set('offset', String(offset));
+  if (q && q.trim()) params.set('q', q.trim());
+
+  const response = await fetch(`${TAGS_API_BASE}/${id}/notes?${params.toString()}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to fetch tag notes (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  const rawList = (
+    Array.isArray(data.notes)
+      ? data.notes
+      : Array.isArray(data.items)
+        ? data.items
+        : []
+  ).map((note) => ({
+    ...note,
+    pinned: Boolean(note.pinned),
+  }));
+
+  const normalizedTotal =
+    typeof data.total === 'number'
+      ? data.total
+      : (typeof data.offset === 'number' ? data.offset : offset) + rawList.length;
+
+  return {
+    ...data,
+    notes: rawList,
+    items: rawList,
+    total: normalizedTotal,
+    hasMore: Boolean(data.hasMore),
+    tag: data.tag,
   };
 }
 

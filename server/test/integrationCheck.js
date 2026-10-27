@@ -20,6 +20,13 @@ import {
   updateCollection,
   softDeleteCollection,
 } from '../src/collections/collectionRepository.js';
+import {
+  createTag,
+  findTagsByUserId,
+  findTagByIdAndUserId,
+  updateTag,
+  deleteTag,
+} from '../src/tags/tagRepository.js';
 import { derivePlainText, validateContent } from '../src/notes/contentValidator.js';
 
 async function runControlledIntegrationCheck() {
@@ -29,6 +36,7 @@ async function runControlledIntegrationCheck() {
   const createdUserIds = [];
   const createdNoteIds = [];
   const createdCollectionIds = [];
+  const createdTagIds = [];
 
   try {
     // 1. Verify connected database identity
@@ -41,13 +49,15 @@ async function runControlledIntegrationCheck() {
     const tablesCheck = await pool.query(`
       SELECT table_name
       FROM information_schema.tables
-      WHERE table_schema = 'public' AND table_name IN ('users', 'session', 'notes', 'collections', 'app_metadata')
+      WHERE table_schema = 'public' AND table_name IN ('users', 'session', 'notes', 'collections', 'tags', 'note_tags', 'app_metadata')
       ORDER BY table_name;
     `);
     const tableNames = tablesCheck.rows.map((r) => r.table_name);
     console.log(`[Integration Check] Verified core tables present: ${tableNames.join(', ')}`);
     assert.ok(tableNames.includes('notes'), 'Table "notes" must exist');
     assert.ok(tableNames.includes('collections'), 'Table "collections" must exist');
+    assert.ok(tableNames.includes('tags'), 'Table "tags" must exist');
+    assert.ok(tableNames.includes('note_tags'), 'Table "note_tags" must exist');
     assert.ok(tableNames.includes('users'), 'Table "users" must exist');
 
     // 3. Create two isolated temporary user accounts directly in the database
@@ -347,6 +357,68 @@ async function runControlledIntegrationCheck() {
 
     console.log('[Integration Check] Verified collection creation, uniqueness, note association, filter, rename, and soft-delete unassignment in PostgreSQL.');
 
+    // 10.8 Verify Tag Creation, Note Tagging, Filtering, Renaming, and Soft-Deletion
+    const createTagResult = await createTag({ userId: userA.id, name: 'Algorithms', pool });
+    assert.ok(createTagResult.tag, 'Tag creation must succeed');
+    const tagAlgo = createTagResult.tag;
+    createdTagIds.push(tagAlgo.id);
+
+    // Duplicate active tag name must conflict
+    const dupTagResult = await createTag({ userId: userA.id, name: ' algorithms ', pool });
+    assert.strictEqual(dupTagResult.conflict, true, 'Duplicate active tag name must result in conflict');
+
+    // Create note with tags: Algorithms and LeetCode
+    const taggedNote = await createNote({
+      userId: userA.id,
+      title: 'Binary Search Notes',
+      contentJson: docA,
+      contentText: textA,
+      pinned: true,
+      tags: ['Algorithms', 'LeetCode'],
+      pool,
+    });
+    createdNoteIds.push(taggedNote.id);
+    assert.strictEqual(taggedNote.tags.length, 2, 'Note must have 2 tags attached');
+
+    // Check tags created
+    const leetCodeTag = taggedNote.tags.find((t) => t.name.toLowerCase() === 'leetcode');
+    assert.ok(leetCodeTag, 'LeetCode tag must be created and linked');
+    createdTagIds.push(leetCodeTag.id);
+
+    // Verify tag listing returns noteCount = 1 for both tags
+    const tagsList = await findTagsByUserId({ userId: userA.id, pool });
+    const algoInList = tagsList.find((t) => t.id === tagAlgo.id);
+    assert.ok(algoInList, 'Algorithms tag must appear in user tags list');
+    assert.strictEqual(algoInList.noteCount, 1, 'Algorithms note count must be 1');
+
+    // Verify note filtering by tagId
+    const notesByTagId = await findNotesByUserId({ userId: userA.id, tagId: tagAlgo.id, pool });
+    assert.strictEqual(notesByTagId.rawItems.length, 1);
+    assert.strictEqual(notesByTagId.rawItems[0].id, taggedNote.id);
+
+    // Verify note filtering by tag name
+    const notesByTagName = await findNotesByUserId({ userId: userA.id, tag: 'leetcode', pool });
+    assert.strictEqual(notesByTagName.rawItems.length, 1);
+    assert.strictEqual(notesByTagName.rawItems[0].id, taggedNote.id);
+
+    // Rename tag
+    const renameTagRes = await updateTag({ id: tagAlgo.id, userId: userA.id, name: 'Data Structures & Algorithms', pool });
+    assert.strictEqual(renameTagRes.tag.name, 'Data Structures & Algorithms');
+
+    // Soft delete tag -> notes must remain active and intact
+    await deleteTag({ id: tagAlgo.id, userId: userA.id, pool });
+    const directTagAfterDel = await findTagByIdAndUserId({ id: tagAlgo.id, userId: userA.id, pool });
+    assert.strictEqual(directTagAfterDel, null, 'Soft-deleted tag must not be returned by findTagByIdAndUserId');
+
+    const taggedNoteAfterTagDel = await findNoteByIdAndUserId({ id: taggedNote.id, userId: userA.id, pool });
+    assert.ok(taggedNoteAfterTagDel, 'Note must remain active after tag deletion');
+    assert.strictEqual(
+      taggedNoteAfterTagDel.tags.some((t) => t.id === tagAlgo.id),
+      false,
+      'Deleted tag must be unlinked from note'
+    );
+    console.log('[Integration Check] Verified tag creation, uniqueness, note association, filter, rename, and soft-delete unassignment in PostgreSQL.');
+
     // 11. Verify Foreign Key ON DELETE RESTRICT policy
     let deleteUserBlocked = false;
     try {
@@ -364,7 +436,12 @@ async function runControlledIntegrationCheck() {
     // 12. Clean up exact temporary records created by this check
     console.log('[Integration Check] Cleaning up temporary records...');
     if (createdNoteIds.length > 0) {
+      await pool.query('DELETE FROM note_tags WHERE note_id = ANY($1)', [createdNoteIds]);
       await pool.query('DELETE FROM notes WHERE id = ANY($1)', [createdNoteIds]);
+    }
+    if (createdTagIds.length > 0) {
+      await pool.query('DELETE FROM note_tags WHERE tag_id = ANY($1)', [createdTagIds]);
+      await pool.query('DELETE FROM tags WHERE id = ANY($1)', [createdTagIds]);
     }
     if (createdCollectionIds.length > 0) {
       await pool.query('DELETE FROM collections WHERE id = ANY($1)', [createdCollectionIds]);

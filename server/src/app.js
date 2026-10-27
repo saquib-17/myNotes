@@ -7,6 +7,7 @@ import readyRoutes, { createReadyRouter } from './routes/ready.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import notesRoutes from './routes/notes.routes.js';
 import collectionsRoutes from './routes/collections.routes.js';
+import tagsRoutes from './routes/tags.routes.js';
 import { getSessionOptions } from './config/session.config.js';
 import { getSessionStore } from './auth/sessionStore.js';
 
@@ -34,6 +35,7 @@ function getDefaultSessionMiddleware() {
  * @param {import('express').Router} [options.authRouter] - Injected authentication router
  * @param {import('express').Router} [options.notesRouter] - Injected notes router
  * @param {import('express').Router} [options.collectionsRouter] - Injected collections router
+ * @param {import('express').Router} [options.tagsRouter] - Injected tags router
  * @returns {express.Express}
  */
 export function createApp({
@@ -42,6 +44,7 @@ export function createApp({
   authRouter,
   notesRouter,
   collectionsRouter,
+  tagsRouter,
 } = {}) {
   const app = express();
 
@@ -73,7 +76,7 @@ export function createApp({
     checkReadiness ? createReadyRouter({ checkReadiness }) : readyRoutes
   );
 
-  // Authentication, Private Notes, and Collections routes with scoped session middleware
+  // Authentication, Private Notes, Collections, and Tags routes with scoped session middleware
   const resolvedSessionMiddleware =
     sessionMiddleware !== undefined
       ? sessionMiddleware
@@ -83,10 +86,12 @@ export function createApp({
     app.use('/api/auth', resolvedSessionMiddleware, authRouter || authRoutes);
     app.use('/api/notes', resolvedSessionMiddleware, notesRouter || notesRoutes);
     app.use('/api/collections', resolvedSessionMiddleware, collectionsRouter || collectionsRoutes);
+    app.use('/api/tags', resolvedSessionMiddleware, tagsRouter || tagsRoutes);
   } else {
     app.use('/api/auth', authRouter || authRoutes);
     app.use('/api/notes', notesRouter || notesRoutes);
     app.use('/api/collections', collectionsRouter || collectionsRoutes);
+    app.use('/api/tags', tagsRouter || tagsRoutes);
   }
 
   // Fallback for unknown API routes - returns structured JSON 404

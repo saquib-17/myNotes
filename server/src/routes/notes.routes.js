@@ -10,6 +10,7 @@ import {
 } from '../notes/contentValidator.js';
 import * as defaultNoteRepo from '../notes/noteRepository.js';
 import * as defaultCollectionRepo from '../collections/collectionRepository.js';
+import * as defaultTagRepo from '../tags/tagRepository.js';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -19,12 +20,14 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
  * @param {object} [options]
  * @param {typeof defaultNoteRepo} [options.noteRepository]
  * @param {typeof defaultCollectionRepo} [options.collectionRepository]
+ * @param {typeof defaultTagRepo} [options.tagRepository]
  * @param {import('express').RequestHandler} [options.requireAuthMiddleware]
  * @returns {Router}
  */
 export function createNotesRouter({
   noteRepository = defaultNoteRepo,
   collectionRepository = defaultCollectionRepo,
+  tagRepository = defaultTagRepo,
   requireAuthMiddleware = defaultRequireAuth,
 } = {}) {
   const router = Router();
@@ -57,7 +60,7 @@ export function createNotesRouter({
       }
 
       // Strict property whitelist: reject unknown fields (e.g. user_id, version)
-      const allowedKeys = new Set(['title', 'content', 'pinned', 'collectionId']);
+      const allowedKeys = new Set(['title', 'content', 'pinned', 'collectionId', 'tags']);
       for (const key of Object.keys(req.body)) {
         if (!allowedKeys.has(key)) {
           return res.status(400).json({
@@ -67,13 +70,25 @@ export function createNotesRouter({
         }
       }
 
-      const { title, content, pinned, collectionId } = req.body;
+      const { title, content, pinned, collectionId, tags } = req.body;
 
       if (pinned !== undefined && typeof pinned !== 'boolean') {
         return res.status(400).json({
           error: 'BadRequest',
           message: 'Field "pinned" must be a boolean.',
         });
+      }
+
+      let normalizedTags;
+      if (tags !== undefined) {
+        try {
+          normalizedTags = tagRepository.validateAndNormalizeNoteTags(tags);
+        } catch (tagErr) {
+          return res.status(tagErr.status || 400).json({
+            error: 'BadRequest',
+            message: tagErr.message,
+          });
+        }
       }
 
       if (collectionId !== undefined && collectionId !== null) {
@@ -120,11 +135,13 @@ export function createNotesRouter({
         contentText,
         pinned: Boolean(pinned),
         collectionId: collectionId || null,
+        tags: normalizedTags,
       });
 
       return res.status(201).json({
         ...createdNote,
         collectionId: createdNote.collectionId || null,
+        tags: createdNote.tags || [],
       });
     } catch (err) {
       if (err instanceof ValidationError) {
@@ -144,7 +161,7 @@ export function createNotesRouter({
    */
   router.get('/', async (req, res, next) => {
     try {
-      let { q = '', limit = '20', offset = '0', collectionId } = req.query;
+      let { q = '', limit = '20', offset = '0', collectionId, tagId, tag } = req.query;
 
       if (collectionId !== undefined && collectionId !== null && collectionId.trim() !== '') {
         if (!isValidUuid(collectionId.trim())) {
@@ -153,6 +170,22 @@ export function createNotesRouter({
             message: 'Query parameter "collectionId" must be a valid UUID.',
           });
         }
+      }
+
+      if (tagId !== undefined && tagId !== null && tagId.trim() !== '') {
+        if (!isValidUuid(tagId.trim())) {
+          return res.status(400).json({
+            error: 'BadRequest',
+            message: 'Query parameter "tagId" must be a valid UUID.',
+          });
+        }
+      }
+
+      if (tag !== undefined && tag !== null && typeof tag === 'string' && tag.length > 200) {
+        return res.status(400).json({
+          error: 'BadRequest',
+          message: 'Query parameter "tag" cannot exceed 200 characters.',
+        });
       }
 
       // Validate search string
@@ -197,6 +230,8 @@ export function createNotesRouter({
         userId: req.user.id,
         q,
         collectionId: collectionId ? collectionId.trim() : undefined,
+        tagId: tagId ? tagId.trim() : undefined,
+        tag: tag ? tag.trim() : undefined,
         limit: parsedLimit,
         offset: parsedOffset,
       });
@@ -207,6 +242,7 @@ export function createNotesRouter({
         preview: generatePreview(row.content_text),
         pinned: Boolean(row.pinned),
         collectionId: row.collectionId || null,
+        tags: row.tags || [],
         version: row.version,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
@@ -273,6 +309,7 @@ export function createNotesRouter({
         preview: generatePreview(row.content_text),
         pinned: Boolean(row.pinned),
         collectionId: row.collectionId || null,
+        tags: row.tags || [],
         version: row.version,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
@@ -326,6 +363,7 @@ export function createNotesRouter({
       return res.status(200).json({
         ...note,
         collectionId: note.collectionId || null,
+        tags: note.tags || [],
       });
     } catch (err) {
       return next(err);
@@ -355,7 +393,7 @@ export function createNotesRouter({
       }
 
       // Reject unknown fields
-      const allowedKeys = new Set(['title', 'content', 'expectedVersion', 'pinned', 'collectionId']);
+      const allowedKeys = new Set(['title', 'content', 'expectedVersion', 'pinned', 'collectionId', 'tags']);
       for (const key of Object.keys(req.body)) {
         if (!allowedKeys.has(key)) {
           return res.status(400).json({
@@ -365,13 +403,25 @@ export function createNotesRouter({
         }
       }
 
-      const { title, content, expectedVersion, pinned, collectionId } = req.body;
+      const { title, content, expectedVersion, pinned, collectionId, tags } = req.body;
 
       if (pinned !== undefined && typeof pinned !== 'boolean') {
         return res.status(400).json({
           error: 'BadRequest',
           message: 'Field "pinned" must be a boolean.',
         });
+      }
+
+      let normalizedTags;
+      if (tags !== undefined) {
+        try {
+          normalizedTags = tagRepository.validateAndNormalizeNoteTags(tags);
+        } catch (tagErr) {
+          return res.status(tagErr.status || 400).json({
+            error: 'BadRequest',
+            message: tagErr.message,
+          });
+        }
       }
 
       if (collectionId !== undefined && collectionId !== null) {
@@ -434,6 +484,7 @@ export function createNotesRouter({
         contentText,
         pinned,
         collectionId,
+        tags: normalizedTags,
       });
 
       if (updateResult.notFound) {
@@ -454,6 +505,7 @@ export function createNotesRouter({
       return res.status(200).json({
         ...updateResult.updatedNote,
         collectionId: updateResult.updatedNote.collectionId || null,
+        tags: updateResult.updatedNote.tags || [],
       });
     } catch (err) {
       if (err instanceof ValidationError) {

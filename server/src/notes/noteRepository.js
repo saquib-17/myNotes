@@ -1,4 +1,9 @@
 import { getPool } from '../db/pool.js';
+import {
+  syncNoteTags,
+  findTagsByNoteId,
+  findTagsByNoteIds,
+} from '../tags/tagRepository.js';
 
 /**
  * Escapes characters with special meaning in SQL LIKE patterns (%, _, \).
@@ -29,26 +34,54 @@ export async function createNote({
   contentText,
   pinned = false,
   collectionId = null,
+  tags,
   pool = getPool(),
 }) {
-  const query = `
-    INSERT INTO notes (user_id, title, content_json, content_text, pinned, collection_id, version)
-    VALUES ($1, $2, $3, $4, COALESCE($5, false), $6, 1)
-    RETURNING id, title, content_json AS content, pinned, collection_id AS "collectionId", version, created_at AS "createdAt", updated_at AS "updatedAt";
-  `;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const query = `
+      INSERT INTO notes (user_id, title, content_json, content_text, pinned, collection_id, version)
+      VALUES ($1, $2, $3, $4, COALESCE($5, false), $6, 1)
+      RETURNING id, title, content_json AS content, pinned, collection_id AS "collectionId", version, created_at AS "createdAt", updated_at AS "updatedAt";
+    `;
 
-  const values = [userId, title, JSON.stringify(contentJson), contentText, Boolean(pinned), collectionId || null];
-  const result = await pool.query(query, values);
-  return result.rows[0];
+    const values = [userId, title, JSON.stringify(contentJson), contentText, Boolean(pinned), collectionId || null];
+    const result = await client.query(query, values);
+    const createdNote = result.rows[0];
+
+    let noteTags = [];
+    if (tags !== undefined) {
+      noteTags = await syncNoteTags({
+        noteId: createdNote.id,
+        userId,
+        tagNames: tags,
+        client,
+      });
+    }
+
+    await client.query('COMMIT');
+    return {
+      ...createdNote,
+      tags: noteTags,
+    };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /**
- * Lists active notes for an authenticated user with optional search, collection filtering, and pagination.
+ * Lists active notes for an authenticated user with optional search, collection filtering, tag filtering, and pagination.
  *
  * @param {object} params
  * @param {string} params.userId
  * @param {string} [params.q] - Search query
  * @param {string} [params.collectionId] - Optional collection filter UUID
+ * @param {string} [params.tagId] - Optional tag filter UUID
+ * @param {string} [params.tag] - Optional tag filter name
  * @param {number} [params.limit=20]
  * @param {number} [params.offset=0]
  * @param {import('pg').Pool} [params.pool]
@@ -58,16 +91,34 @@ export async function findNotesByUserId({
   userId,
   q = '',
   collectionId,
+  tagId,
+  tag,
   limit = 20,
   offset = 0,
   pool = getPool(),
 }) {
-  const conditions = ['user_id = $1', 'deleted_at IS NULL'];
+  const conditions = ['notes.user_id = $1', 'notes.deleted_at IS NULL'];
   const values = [userId];
 
   if (typeof collectionId === 'string' && collectionId.trim().length > 0) {
     values.push(collectionId.trim());
-    conditions.push(`collection_id = $${values.length}`);
+    conditions.push(`notes.collection_id = $${values.length}`);
+  }
+
+  if (typeof tagId === 'string' && tagId.trim().length > 0) {
+    values.push(tagId.trim());
+    conditions.push(`EXISTS (
+      SELECT 1 FROM note_tags nt
+      JOIN tags t ON t.id = nt.tag_id
+      WHERE nt.note_id = notes.id AND t.id = $${values.length} AND t.deleted_at IS NULL
+    )`);
+  } else if (typeof tag === 'string' && tag.trim().length > 0) {
+    values.push(tag.trim().toLowerCase());
+    conditions.push(`EXISTS (
+      SELECT 1 FROM note_tags nt
+      JOIN tags t ON t.id = nt.tag_id
+      WHERE nt.note_id = notes.id AND LOWER(TRIM(t.name)) = $${values.length} AND t.deleted_at IS NULL
+    )`);
   }
 
   const trimmedQuery = typeof q === 'string' ? q.trim() : '';
@@ -76,7 +127,7 @@ export async function findNotesByUserId({
     values.push(`%${escaped}%`);
     const paramIdx = values.length;
     conditions.push(
-      `(title ILIKE $${paramIdx} ESCAPE '\\' OR content_text ILIKE $${paramIdx} ESCAPE '\\')`
+      `(notes.title ILIKE $${paramIdx} ESCAPE '\\' OR notes.content_text ILIKE $${paramIdx} ESCAPE '\\')`
     );
   }
 
@@ -95,10 +146,10 @@ export async function findNotesByUserId({
   const offsetParamIdx = selectValues.length;
 
   const query = `
-    SELECT id, title, content_text, pinned, collection_id AS "collectionId", version, created_at AS "createdAt", updated_at AS "updatedAt"
+    SELECT notes.id, notes.title, notes.content_text, notes.pinned, notes.collection_id AS "collectionId", notes.version, notes.created_at AS "createdAt", notes.updated_at AS "updatedAt"
     FROM notes
     WHERE ${conditions.join(' AND ')}
-    ORDER BY pinned DESC, updated_at DESC, id ASC
+    ORDER BY notes.pinned DESC, notes.updated_at DESC, notes.id ASC
     LIMIT $${limitParamIdx} OFFSET $${offsetParamIdx};
   `;
 
@@ -106,8 +157,17 @@ export async function findNotesByUserId({
   const hasMore = result.rows.length > limit;
   const rawItems = hasMore ? result.rows.slice(0, limit) : result.rows;
 
+  // Batch-load tags for all returned notes
+  const noteIds = rawItems.map((n) => n.id);
+  const tagsMap = await findTagsByNoteIds({ noteIds, pool });
+
+  const itemsWithTags = rawItems.map((note) => ({
+    ...note,
+    tags: tagsMap.get(note.id) || [],
+  }));
+
   return {
-    rawItems,
+    rawItems: itemsWithTags,
     total,
     limit,
     offset,
@@ -136,7 +196,13 @@ export async function findNoteByIdAndUserId({
   `;
 
   const result = await pool.query(query, [id, userId]);
-  return result.rows[0] || null;
+  if (!result.rows[0]) return null;
+
+  const noteTags = await findTagsByNoteId({ noteId: id, pool });
+  return {
+    ...result.rows[0],
+    tags: noteTags,
+  };
 }
 
 /**
@@ -163,57 +229,83 @@ export async function updateNote({
   contentText,
   pinned,
   collectionId,
+  tags,
   pool = getPool(),
 }) {
-  const isCollectionProvided = collectionId !== undefined;
-  const updateQuery = `
-    UPDATE notes
-    SET title = $1,
-        content_json = $2,
-        content_text = $3,
-        pinned = COALESCE($4, pinned),
-        collection_id = CASE WHEN $5::boolean THEN $6::uuid ELSE collection_id END,
-        version = version + 1,
-        updated_at = now()
-    WHERE id = $7
-      AND user_id = $8
-      AND deleted_at IS NULL
-      AND version = $9
-    RETURNING id, title, content_json AS content, pinned, collection_id AS "collectionId", version, created_at AS "createdAt", updated_at AS "updatedAt";
-  `;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const isCollectionProvided = collectionId !== undefined;
+    const updateQuery = `
+      UPDATE notes
+      SET title = $1,
+          content_json = $2,
+          content_text = $3,
+          pinned = COALESCE($4, pinned),
+          collection_id = CASE WHEN $5::boolean THEN $6::uuid ELSE collection_id END,
+          version = version + 1,
+          updated_at = now()
+      WHERE id = $7
+        AND user_id = $8
+        AND deleted_at IS NULL
+        AND version = $9
+      RETURNING id, title, content_json AS content, pinned, collection_id AS "collectionId", version, created_at AS "createdAt", updated_at AS "updatedAt";
+    `;
 
-  const values = [
-    title,
-    JSON.stringify(contentJson),
-    contentText,
-    typeof pinned === 'boolean' ? pinned : null,
-    isCollectionProvided,
-    collectionId || null,
-    id,
-    userId,
-    expectedVersion,
-  ];
+    const values = [
+      title,
+      JSON.stringify(contentJson),
+      contentText,
+      typeof pinned === 'boolean' ? pinned : null,
+      isCollectionProvided,
+      collectionId || null,
+      id,
+      userId,
+      expectedVersion,
+    ];
 
-  const result = await pool.query(updateQuery, values);
-  if (result.rowCount === 1) {
-    return { updatedNote: result.rows[0] };
+    const result = await client.query(updateQuery, values);
+    if (result.rowCount === 1) {
+      const updatedNote = result.rows[0];
+      let noteTags;
+      if (tags !== undefined) {
+        noteTags = await syncNoteTags({
+          noteId: id,
+          userId,
+          tagNames: tags,
+          client,
+        });
+      } else {
+        noteTags = await findTagsByNoteId({ noteId: id, pool: client });
+      }
+
+      await client.query('COMMIT');
+      return { updatedNote: { ...updatedNote, tags: noteTags } };
+    }
+
+    await client.query('ROLLBACK');
+
+    // Row not updated: disambiguate notFound vs conflict without exposing other user data
+    const checkQuery = `
+      SELECT user_id, version, deleted_at
+      FROM notes
+      WHERE id = $1;
+    `;
+
+    const checkResult = await pool.query(checkQuery, [id]);
+    const row = checkResult.rows[0];
+
+    if (!row || row.user_id !== userId || row.deleted_at !== null) {
+      return { notFound: true };
+    }
+
+    return { conflict: true, currentVersion: row.version };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
   }
-
-  // Row not updated: disambiguate notFound vs conflict without exposing other user data
-  const checkQuery = `
-    SELECT user_id, version, deleted_at
-    FROM notes
-    WHERE id = $1;
-  `;
-
-  const checkResult = await pool.query(checkQuery, [id]);
-  const row = checkResult.rows[0];
-
-  if (!row || row.user_id !== userId || row.deleted_at !== null) {
-    return { notFound: true };
-  }
-
-  return { conflict: true, currentVersion: row.version };
 }
 
 /**
@@ -294,7 +386,8 @@ export async function setNotePinned({
 
   const result = await pool.query(query, [Boolean(pinned), id, userId]);
   if (result.rowCount === 1) {
-    return { updatedNote: result.rows[0] };
+    const noteTags = await findTagsByNoteId({ noteId: id, pool });
+    return { updatedNote: { ...result.rows[0], tags: noteTags } };
   }
 
   return { notFound: true };
@@ -347,8 +440,16 @@ export async function findTrashedNotesByUserId({
   const hasMore = result.rows.length > limit;
   const rawItems = hasMore ? result.rows.slice(0, limit) : result.rows;
 
+  const noteIds = rawItems.map((n) => n.id);
+  const tagsMap = await findTagsByNoteIds({ noteIds, pool });
+
+  const itemsWithTags = rawItems.map((note) => ({
+    ...note,
+    tags: tagsMap.get(note.id) || [],
+  }));
+
   return {
-    rawItems,
+    rawItems: itemsWithTags,
     total,
     limit,
     offset,
@@ -384,7 +485,8 @@ export async function restoreNote({
 
   const result = await pool.query(query, [id, userId]);
   if (result.rowCount === 1) {
-    return { restoredNote: result.rows[0] };
+    const noteTags = await findTagsByNoteId({ noteId: id, pool });
+    return { restoredNote: { ...result.rows[0], tags: noteTags } };
   }
 
   // Not found, owned by someone else, or already active

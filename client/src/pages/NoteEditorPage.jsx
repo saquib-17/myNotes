@@ -9,6 +9,7 @@ import {
 } from "react-router-dom";
 import { useAuth } from "../context/useAuth.js";
 import { useCollections } from "../context/useCollections.js";
+import { useTags } from "../context/useTags.js";
 import {
   fetchNoteById,
   updateNote,
@@ -17,6 +18,7 @@ import {
   trashNote,
   validateClientNote,
   NOTE_LIMITS,
+  TAG_LIMITS,
 } from "../services/notes.service.js";
 import TiptapEditor from "../components/editor/TiptapEditor.jsx";
 import {
@@ -63,6 +65,7 @@ export default function NoteEditorPage() {
   const navigate = useNavigate();
   const { getCsrfToken } = useAuth();
   const { collections, refreshCollections } = useCollections();
+  const { tags: allExistingTags, refreshTags } = useTags();
   const outlet = useOutletContext();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -77,9 +80,14 @@ export default function NoteEditorPage() {
   const [isPinned, setIsPinned] = useState(false);
   const [isPinning, setIsPinning] = useState(false);
   const [collectionId, setCollectionId] = useState(null);
+  const [noteTags, setNoteTags] = useState([]);
+  const [tagInput, setTagInput] = useState("");
+  const [tagInputError, setTagInputError] = useState(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const tagInputRef = useRef(null);
 
   // Saved baseline for dirty state detection
-  const savedBaselineRef = useRef({ title: "", content: CANONICAL_EMPTY_DOC, collectionId: null });
+  const savedBaselineRef = useRef({ title: "", content: CANONICAL_EMPTY_DOC, collectionId: null, tags: [] });
   const [isDirty, setIsDirty] = useState(false);
 
   // Editor instance reference

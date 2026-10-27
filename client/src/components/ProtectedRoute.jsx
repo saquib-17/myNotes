@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/useAuth.js";
 import { CollectionsProvider } from "../context/CollectionsContext.jsx";
+import { TagsProvider } from "../context/TagsContext.jsx";
 
 /**
  * ProtectedRoute wraps a child component and redirects unauthenticated users
@@ -94,5 +95,9 @@ export default function ProtectedRoute({ children }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  return <CollectionsProvider>{children}</CollectionsProvider>;
+  return (
+    <CollectionsProvider>
+      <TagsProvider>{children}</TagsProvider>
+    </CollectionsProvider>
+  );
 }

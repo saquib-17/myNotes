@@ -18,6 +18,7 @@ export const APPROVED_ROUTES = [
 
 const NOTE_DETAIL_ROUTE_REGEX = /^\/notes\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const COLLECTION_DETAIL_ROUTE_REGEX = /^\/collections\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const TAG_DETAIL_ROUTE_REGEX = /^\/tags\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Validates a return path against approved private routes.
@@ -40,6 +41,9 @@ export function safeReturnPath(pathname) {
     return pathname;
   }
   if (COLLECTION_DETAIL_ROUTE_REGEX.test(pathname)) {
+    return pathname;
+  }
+  if (TAG_DETAIL_ROUTE_REGEX.test(pathname)) {
     return pathname;
   }
   return "/dashboard";
@@ -129,6 +133,9 @@ export function getRouteMetadata(pathname) {
   }
   if (typeof pathname === "string" && COLLECTION_DETAIL_ROUTE_REGEX.test(pathname)) {
     return { title: "Collection", description: "View and organize notes in this collection." };
+  }
+  if (typeof pathname === "string" && TAG_DETAIL_ROUTE_REGEX.test(pathname)) {
+    return { title: "Tag", description: "View notes tagged with this label." };
   }
   if (pathname === "/trash") {
     return { title: "Trash", description: "View and restore soft-deleted notes." };

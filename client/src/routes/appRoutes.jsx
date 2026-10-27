@@ -19,6 +19,7 @@ import RevisionPage from "../pages/RevisionPage.jsx";
 import JournalPage from "../pages/JournalPage.jsx";
 import TrashPage from "../pages/TrashPage.jsx";
 import CollectionNotesPage from "../pages/CollectionNotesPage.jsx";
+import TagNotesPage from "../pages/TagNotesPage.jsx";
 import NotFoundPage from "../pages/NotFoundPage.jsx";
 
 /**
@@ -45,6 +46,7 @@ export const appRoutes = [
       { path: "notes", element: <NotesPage /> },
       { path: "notes/:noteId", element: <NoteEditorPage /> },
       { path: "collections/:collectionId", element: <CollectionNotesPage /> },
+      { path: "tags/:tagId", element: <TagNotesPage /> },
       { path: "trash", element: <TrashPage /> },
       { path: "questions", element: <QuestionsPage /> },
       { path: "documents", element: <DocumentsPage /> },

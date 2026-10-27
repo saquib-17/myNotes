@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth.js";
 import { useCollections } from "../context/useCollections.js";
+import { useTags } from "../context/useTags.js";
 import { fetchNotes, createNote, pinNote, unpinNote } from "../services/notes.service.js";
 import { CANONICAL_EMPTY_DOC } from "../constants/editor.js";
 import LoadingState from "../components/LoadingState.jsx";
@@ -39,6 +40,7 @@ function formatTimestamp(isoString) {
 export default function NotesPage() {
   const { getCsrfToken } = useAuth();
   const { collections, refreshCollections } = useCollections();
+  const { tags } = useTags();
   const navigate = useNavigate();
 
   const [notes, setNotes] = useState([]);
@@ -49,6 +51,7 @@ export default function NotesPage() {
   const [searchInput, setSearchInput] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
   const [selectedCollectionId, setSelectedCollectionId] = useState("");
+  const [selectedTagId, setSelectedTagId] = useState("");
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -97,6 +100,7 @@ export default function NotesPage() {
       const data = await fetchNotes({
         q: activeQuery,
         collectionId: selectedCollectionId || undefined,
+        tagId: selectedTagId || undefined,
         limit: PAGE_SIZE,
         offset,
         signal,
@@ -142,7 +146,7 @@ export default function NotesPage() {
         setIsLoading(false);
       }
     }
-  }, [activeQuery, selectedCollectionId, offset]);
+  }, [activeQuery, selectedCollectionId, selectedTagId, offset]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -277,6 +281,18 @@ export default function NotesPage() {
                 </svg>
                 <span>{noteCollection.name}</span>
               </span>
+            </div>
+          )}
+          {Array.isArray(note.tags) && note.tags.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {note.tags.map((t) => (
+                <span
+                  key={t.id || t.name}
+                  className="inline-flex items-center rounded-md bg-stone-100 px-1.5 py-0.5 text-3xs font-medium text-stone-600"
+                >
+                  #{t.name}
+                </span>
+              ))}
             </div>
           )}
           <p className="mt-2 text-sm text-stone-600 line-clamp-2 leading-relaxed min-h-[2.5rem]">
@@ -461,7 +477,7 @@ export default function NotesPage() {
         </div>
 
         {collections.length > 0 && (
-          <div className="w-full sm:w-56">
+          <div className="w-full sm:w-48">
             <label htmlFor="collection-filter" className="sr-only">
               Filter by collection
             </label>
@@ -479,6 +495,31 @@ export default function NotesPage() {
               {collections.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} ({c.noteCount || 0})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {tags.length > 0 && (
+          <div className="w-full sm:w-44">
+            <label htmlFor="tag-filter" className="sr-only">
+              Filter by tag
+            </label>
+            <select
+              id="tag-filter"
+              aria-label="Filter by tag"
+              value={selectedTagId}
+              onChange={(e) => {
+                setOffset(0);
+                setSelectedTagId(e.target.value);
+              }}
+              className="w-full rounded-lg border border-stone-300 bg-white py-2.5 px-3 text-sm text-stone-900 shadow-2xs focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+            >
+              <option value="">All tags</option>
+              {tags.map((t) => (
+                <option key={t.id} value={t.id}>
+                  #{t.name} ({t.noteCount || 0})
                 </option>
               ))}
             </select>

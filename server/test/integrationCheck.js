@@ -68,6 +68,12 @@ import {
   setDoubtStatus,
   softDeleteDoubt,
 } from '../src/doubts/doubtRepository.js';
+import {
+  upsertJournalEntry,
+  findJournalEntriesByUserId,
+  findJournalEntryByDateAndUserId,
+  softDeleteJournalEntry,
+} from '../src/journal/journalRepository.js';
 import { derivePlainText, validateContent } from '../src/notes/contentValidator.js';
 
 async function runControlledIntegrationCheck() {
@@ -83,6 +89,7 @@ async function runControlledIntegrationCheck() {
   const createdDocumentIds = [];
   const createdRevisionItemIds = [];
   const createdDoubtIds = [];
+  const createdJournalIds = [];
 
   try {
     // 1. Verify connected database identity
@@ -95,7 +102,7 @@ async function runControlledIntegrationCheck() {
     const tablesCheck = await pool.query(`
       SELECT table_name
       FROM information_schema.tables
-      WHERE table_schema = 'public' AND table_name IN ('users', 'session', 'notes', 'collections', 'tags', 'note_tags', 'tasks', 'questions', 'documents', 'revision_items', 'doubts', 'app_metadata')
+      WHERE table_schema = 'public' AND table_name IN ('users', 'session', 'notes', 'collections', 'tags', 'note_tags', 'tasks', 'questions', 'documents', 'revision_items', 'doubts', 'journal_entries', 'app_metadata')
       ORDER BY table_name;
     `);
     const tableNames = tablesCheck.rows.map((r) => r.table_name);
@@ -107,6 +114,9 @@ async function runControlledIntegrationCheck() {
     assert.ok(tableNames.includes('tasks'), 'Table "tasks" must exist');
     assert.ok(tableNames.includes('questions'), 'Table "questions" must exist');
     assert.ok(tableNames.includes('documents'), 'Table "documents" must exist');
+    assert.ok(tableNames.includes('revision_items'), 'Table "revision_items" must exist');
+    assert.ok(tableNames.includes('doubts'), 'Table "doubts" must exist');
+    assert.ok(tableNames.includes('journal_entries'), 'Table "journal_entries" must exist');
     assert.ok(tableNames.includes('revision_items'), 'Table "revision_items" must exist');
     assert.ok(tableNames.includes('doubts'), 'Table "doubts" must exist');
     assert.ok(tableNames.includes('users'), 'Table "users" must exist');
@@ -787,6 +797,64 @@ async function runControlledIntegrationCheck() {
     assert.strictEqual(directDoubtAfterDel, null, 'Soft-deleted doubt must return null');
     console.log('[Integration Check] Verified doubt lifecycle: create -> resolve with resolution -> verify resolved_at -> reopen -> verify resolved_at cleared and resolution preserved -> soft-delete -> verify exclusion.');
 
+    // 10.14 Test Journal Entry lifecycle (create today -> update -> verify single entry -> list/search -> soft-delete -> verify exclusion -> recreate for same date)
+    const now = new Date();
+    const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    // Create entry
+    const createdJournal = await upsertJournalEntry({
+      userId: userA.id,
+      entryDate: todayDateStr,
+      content: 'Morning reflection on database transaction isolation levels.',
+      pool,
+    });
+    createdJournalIds.push(createdJournal.entry.id);
+    assert.strictEqual(createdJournal.created, true, 'First upsert must be created: true');
+    assert.strictEqual(createdJournal.entry.entry_date, todayDateStr);
+    assert.strictEqual(createdJournal.entry.content, 'Morning reflection on database transaction isolation levels.');
+
+    // Update same entry
+    const updatedJournal = await upsertJournalEntry({
+      userId: userA.id,
+      entryDate: todayDateStr,
+      content: 'Updated reflection: compared Snapshot Isolation with Serializable.',
+      pool,
+    });
+    assert.strictEqual(updatedJournal.created, false, 'Second upsert on same date must be created: false');
+    assert.strictEqual(updatedJournal.entry.id, createdJournal.entry.id, 'Entry ID must remain identical on update');
+    assert.strictEqual(updatedJournal.entry.content, 'Updated reflection: compared Snapshot Isolation with Serializable.');
+
+    // List and search
+    const journalList = await findJournalEntriesByUserId({ userId: userA.id, q: 'Snapshot', pool });
+    assert.strictEqual(journalList.total, 1);
+    assert.strictEqual(journalList.entries[0].id, createdJournal.entry.id);
+
+    // Soft delete
+    const softDelJournal = await softDeleteJournalEntry({ userId: userA.id, entryDate: todayDateStr, pool });
+    assert.strictEqual(softDelJournal, true);
+
+    // Verify exclusion
+    const listAfterDel = await findJournalEntriesByUserId({ userId: userA.id, pool });
+    assert.strictEqual(
+      listAfterDel.entries.some((j) => j.id === createdJournal.entry.id),
+      false,
+      'Soft-deleted journal entry must not appear in active list'
+    );
+    const directJournalAfterDel = await findJournalEntryByDateAndUserId({ userId: userA.id, entryDate: todayDateStr, pool });
+    assert.strictEqual(directJournalAfterDel, null, 'Soft-deleted journal entry must return null from findJournalEntryByDateAndUserId');
+
+    // Recreate entry for the same date without resurrecting the deleted one
+    const recreatedJournal = await upsertJournalEntry({
+      userId: userA.id,
+      entryDate: todayDateStr,
+      content: 'Fresh evening entry after soft-deleting previous draft.',
+      pool,
+    });
+    createdJournalIds.push(recreatedJournal.entry.id);
+    assert.strictEqual(recreatedJournal.created, true, 'Recreated entry for same date must be a new record (created: true)');
+    assert.notStrictEqual(recreatedJournal.entry.id, createdJournal.entry.id, 'New entry ID must differ from soft-deleted entry');
+    console.log('[Integration Check] Verified journal lifecycle: create today -> update -> verify single active entry -> list/search -> soft-delete -> verify exclusion -> recreate entry for same date.');
+
     // 11. Verify Foreign Key ON DELETE RESTRICT policy
     let deleteUserBlocked = false;
     try {
@@ -828,6 +896,9 @@ async function runControlledIntegrationCheck() {
     }
     if (createdDoubtIds.length > 0) {
       await pool.query('DELETE FROM doubts WHERE id = ANY($1)', [createdDoubtIds]);
+    }
+    if (createdJournalIds.length > 0) {
+      await pool.query('DELETE FROM journal_entries WHERE id = ANY($1)', [createdJournalIds]);
     }
     if (createdUserIds.length > 0) {
       await pool.query('DELETE FROM users WHERE id = ANY($1)', [createdUserIds]);

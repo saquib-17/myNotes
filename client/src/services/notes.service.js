@@ -2763,3 +2763,224 @@ export async function deleteDoubt(id, { csrfToken } = {}) {
 
 
 
+
+
+export const JOURNAL_API_BASE = '/api/journal';
+
+export const JOURNAL_LIMITS = {
+  MAX_CONTENT_LENGTH: 20000,
+};
+
+/**
+ * Validates journal entry content on the client side.
+ */
+export function validateClientJournalContent(content) {
+  if (content === undefined || content === null) {
+    return '';
+  }
+  if (typeof content !== 'string') {
+    throw new Error('Journal content must be a string.');
+  }
+  if (content.length > JOURNAL_LIMITS.MAX_CONTENT_LENGTH) {
+    throw new Error(
+      `Journal content cannot exceed ${JOURNAL_LIMITS.MAX_CONTENT_LENGTH} characters.`
+    );
+  }
+  return content;
+}
+
+/**
+ * Validates a journal date format (YYYY-MM-DD) and checks for valid calendar date.
+ */
+export function validateClientJournalDate(dateStr) {
+  if (typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    throw new Error('Journal date must be in YYYY-MM-DD format.');
+  }
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    throw new Error('Invalid calendar date.');
+  }
+  return dateStr;
+}
+
+/**
+ * Fetches journal entries with optional date range, search query, and pagination.
+ */
+export async function fetchJournalEntries({
+  from,
+  to,
+  q = '',
+  limit = 20,
+  offset = 0,
+  signal,
+} = {}) {
+  const params = new URLSearchParams();
+
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  if (q && q.trim()) params.set('q', q.trim());
+  if (limit !== undefined && limit !== null) params.set('limit', String(limit));
+  if (offset !== undefined && offset !== null) params.set('offset', String(offset));
+
+  const url = `${JOURNAL_API_BASE}?${params.toString()}`;
+  const response = await fetch(url, {
+    method: 'GET',
+    credentials: 'include',
+    signal,
+  });
+
+  if (!response.ok) {
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+    throw new ApiError(
+      data?.message || `Failed to fetch journal entries (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  const data = await response.json();
+  const entries = data.entries || data.items || [];
+  return {
+    entries,
+    items: entries,
+    total: data.total ?? entries.length,
+    limit: data.limit ?? limit,
+    offset: data.offset ?? offset,
+    hasMore: data.hasMore ?? data.has_more ?? false,
+    has_more: data.hasMore ?? data.has_more ?? false,
+  };
+}
+
+/**
+ * Fetches a single journal entry for a specific date (YYYY-MM-DD).
+ */
+export async function fetchJournalEntryByDate(date, signal) {
+  validateClientJournalDate(date);
+
+  const response = await fetch(`${JOURNAL_API_BASE}/${date}`, {
+    method: 'GET',
+    credentials: 'include',
+    signal,
+  });
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+    throw new ApiError(
+      data?.message || `Failed to fetch journal entry (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Saves (creates or updates) a journal entry for a specific date.
+ */
+export async function saveJournalEntry(date, payloadOrContent, maybeCsrfToken) {
+  validateClientJournalDate(date);
+
+  let content = '';
+  let csrfToken = null;
+
+  if (typeof payloadOrContent === 'string') {
+    content = payloadOrContent;
+    csrfToken = maybeCsrfToken;
+  } else if (payloadOrContent && typeof payloadOrContent === 'object') {
+    content = payloadOrContent.content || '';
+    csrfToken = payloadOrContent.csrfToken || maybeCsrfToken;
+  }
+
+  validateClientJournalContent(content);
+
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (csrfToken) {
+    headers['X-Csrf-Token'] = csrfToken;
+  }
+
+  const response = await fetch(`${JOURNAL_API_BASE}/${date}`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers,
+    body: JSON.stringify({ content }),
+  });
+
+  if (!response.ok) {
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+    throw new ApiError(
+      data?.message || `Failed to save journal entry (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Soft deletes a journal entry for a specific date.
+ */
+export async function deleteJournalEntry(date, csrfOrOptions) {
+  validateClientJournalDate(date);
+
+  let csrfToken = null;
+  if (typeof csrfOrOptions === 'string') {
+    csrfToken = csrfOrOptions;
+  } else if (csrfOrOptions && typeof csrfOrOptions === 'object') {
+    csrfToken = csrfOrOptions.csrfToken;
+  }
+
+  const headers = {};
+  if (csrfToken) {
+    headers['X-Csrf-Token'] = csrfToken;
+  }
+
+  const response = await fetch(`${JOURNAL_API_BASE}/${date}`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers,
+  });
+
+  if (!response.ok) {
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+    throw new ApiError(
+      data?.message || `Failed to delete journal entry (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return true;
+}

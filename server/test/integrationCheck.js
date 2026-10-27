@@ -35,6 +35,23 @@ import {
   setTaskStatus,
   softDeleteTask,
 } from '../src/tasks/taskRepository.js';
+import {
+  createQuestion,
+  findQuestionsByUserId,
+  findQuestionByIdAndUserId,
+  updateQuestion,
+  recordPractice,
+  updateQuestionStatus,
+  softDeleteQuestion,
+} from '../src/questions/questionRepository.js';
+import {
+  createDocument,
+  findDocumentsByUserId,
+  findDocumentByIdAndUserId,
+  updateDocument,
+  setDocumentFavorite,
+  softDeleteDocument,
+} from '../src/documents/documentRepository.js';
 import { derivePlainText, validateContent } from '../src/notes/contentValidator.js';
 
 async function runControlledIntegrationCheck() {
@@ -46,6 +63,8 @@ async function runControlledIntegrationCheck() {
   const createdCollectionIds = [];
   const createdTagIds = [];
   const createdTaskIds = [];
+  const createdQuestionIds = [];
+  const createdDocumentIds = [];
 
   try {
     // 1. Verify connected database identity
@@ -58,7 +77,7 @@ async function runControlledIntegrationCheck() {
     const tablesCheck = await pool.query(`
       SELECT table_name
       FROM information_schema.tables
-      WHERE table_schema = 'public' AND table_name IN ('users', 'session', 'notes', 'collections', 'tags', 'note_tags', 'tasks', 'app_metadata')
+      WHERE table_schema = 'public' AND table_name IN ('users', 'session', 'notes', 'collections', 'tags', 'note_tags', 'tasks', 'questions', 'documents', 'app_metadata')
       ORDER BY table_name;
     `);
     const tableNames = tablesCheck.rows.map((r) => r.table_name);
@@ -68,6 +87,8 @@ async function runControlledIntegrationCheck() {
     assert.ok(tableNames.includes('tags'), 'Table "tags" must exist');
     assert.ok(tableNames.includes('note_tags'), 'Table "note_tags" must exist');
     assert.ok(tableNames.includes('tasks'), 'Table "tasks" must exist');
+    assert.ok(tableNames.includes('questions'), 'Table "questions" must exist');
+    assert.ok(tableNames.includes('documents'), 'Table "documents" must exist');
     assert.ok(tableNames.includes('users'), 'Table "users" must exist');
 
     // 3. Create two isolated temporary user accounts directly in the database
@@ -483,6 +504,143 @@ async function runControlledIntegrationCheck() {
     assert.strictEqual(singleAfterDelete, null, 'Soft-deleted task must return null from findTaskByIdAndUserId');
     console.log('[Integration Check] Verified task lifecycle: create -> list -> complete -> reopen -> edit -> soft-delete -> exclusion.');
 
+    // 10.10. Question Bank Integration Check:
+    // create MCQ -> list/filter -> practice incorrect -> update status to learning -> edit question -> soft-delete -> verify exclusion from active list
+    const createdQuestion = await createQuestion({
+      userId: userA.id,
+      type: 'MCQ',
+      question: 'What is the worst-case time complexity of merge sort?',
+      options: ['O(N)', 'O(N log N)', 'O(N^2)', 'O(log N)'],
+      correctOptionIndex: 1,
+      topic: 'Algorithms',
+      difficulty: 'medium',
+      status: 'unlearned',
+      pool,
+    });
+    createdQuestionIds.push(createdQuestion.id);
+    assert.strictEqual(createdQuestion.type, 'MCQ');
+    assert.strictEqual(createdQuestion.question, 'What is the worst-case time complexity of merge sort?');
+    assert.deepEqual(createdQuestion.options, ['O(N)', 'O(N log N)', 'O(N^2)', 'O(log N)']);
+    assert.strictEqual(createdQuestion.correctOptionIndex, 1);
+    assert.strictEqual(createdQuestion.status, 'unlearned');
+    assert.strictEqual(createdQuestion.lastPracticedAt, null);
+
+    // List and filter by type=MCQ
+    const qList = await findQuestionsByUserId({ userId: userA.id, type: 'MCQ', pool });
+    assert.ok(qList.questions.some((q) => q.id === createdQuestion.id));
+
+    // Practice incorrect
+    const practiceResult = await recordPractice({
+      id: createdQuestion.id,
+      userId: userA.id,
+      result: 'incorrect',
+      pool,
+    });
+    assert.ok(practiceResult.question.lastPracticedAt, 'lastPracticedAt must be updated after practice');
+    assert.strictEqual(practiceResult.question.status, 'unlearned', 'Mastery status must remain unchanged by practice');
+
+    // Update status to learning
+    const statusResult = await updateQuestionStatus({
+      id: createdQuestion.id,
+      userId: userA.id,
+      status: 'learning',
+      pool,
+    });
+    assert.strictEqual(statusResult.question.status, 'learning');
+
+    // Edit question
+    const editResult = await updateQuestion({
+      id: createdQuestion.id,
+      userId: userA.id,
+      question: 'What is the worst-case time complexity of standard Merge Sort on arrays?',
+      difficulty: 'hard',
+      pool,
+    });
+    assert.strictEqual(
+      editResult.question.question,
+      'What is the worst-case time complexity of standard Merge Sort on arrays?'
+    );
+    assert.strictEqual(editResult.question.difficulty, 'hard');
+
+    // Soft-delete question
+    const softDelQ = await softDeleteQuestion({ id: createdQuestion.id, userId: userA.id, pool });
+    assert.strictEqual(softDelQ.deleted, true);
+
+    // Verify exclusion from active question list and direct lookup
+    const qListAfterDel = await findQuestionsByUserId({ userId: userA.id, pool });
+    assert.strictEqual(
+      qListAfterDel.questions.some((q) => q.id === createdQuestion.id),
+      false,
+      'Soft-deleted question must not appear in active questions list'
+    );
+    const directQAfterDel = await findQuestionByIdAndUserId({ id: createdQuestion.id, userId: userA.id, pool });
+    assert.strictEqual(directQAfterDel, null, 'Soft-deleted question must return null from findQuestionByIdAndUserId');
+    console.log('[Integration Check] Verified question lifecycle: create MCQ -> list/filter -> practice incorrect -> update status to learning -> edit question -> soft-delete -> verify exclusion.');
+
+    // 10.11 Test Document lifecycle (create -> list/filter -> favorite -> edit -> unfavorite -> soft-delete -> verify exclusion)
+    const createdDoc = await createDocument({
+      userId: userA.id,
+      title: 'PostgreSQL Internals Guide',
+      url: 'https://example.com/postgres-internals',
+      description: 'Deep dive into WAL and MVCC',
+      category: 'documentation',
+      topic: 'database',
+      favorite: false,
+      pool,
+    });
+    createdDocumentIds.push(createdDoc.id);
+    assert.strictEqual(createdDoc.title, 'PostgreSQL Internals Guide');
+    assert.strictEqual(createdDoc.category, 'documentation');
+    assert.strictEqual(createdDoc.favorite, false);
+
+    // List and verify presence
+    const docList = await findDocumentsByUserId({ userId: userA.id, pool });
+    assert.ok(docList.documents.some((d) => d.id === createdDoc.id));
+
+    // Favorite document
+    const favDoc = await setDocumentFavorite({
+      id: createdDoc.id,
+      userId: userA.id,
+      favorite: true,
+      pool,
+    });
+    assert.strictEqual(favDoc.favorite, true);
+
+    // Edit document
+    const editDoc = await updateDocument({
+      id: createdDoc.id,
+      userId: userA.id,
+      title: 'PostgreSQL Internals 2nd Edition',
+      category: 'article',
+      pool,
+    });
+    assert.strictEqual(editDoc.title, 'PostgreSQL Internals 2nd Edition');
+    assert.strictEqual(editDoc.category, 'article');
+
+    // Unfavorite document
+    const unfavDoc = await setDocumentFavorite({
+      id: createdDoc.id,
+      userId: userA.id,
+      favorite: false,
+      pool,
+    });
+    assert.strictEqual(unfavDoc.favorite, false);
+
+    // Soft-delete document
+    const softDelDoc = await softDeleteDocument({ id: createdDoc.id, userId: userA.id, pool });
+    assert.strictEqual(softDelDoc, true);
+
+    // Verify exclusion from active list and direct lookup
+    const docListAfterDel = await findDocumentsByUserId({ userId: userA.id, pool });
+    assert.strictEqual(
+      docListAfterDel.documents.some((d) => d.id === createdDoc.id),
+      false,
+      'Soft-deleted document must not appear in active documents list'
+    );
+    const directDocAfterDel = await findDocumentByIdAndUserId({ id: createdDoc.id, userId: userA.id, pool });
+    assert.strictEqual(directDocAfterDel, null, 'Soft-deleted document must return null from findDocumentByIdAndUserId');
+    console.log('[Integration Check] Verified document lifecycle: create -> list/filter -> favorite -> edit -> unfavorite -> soft-delete -> verify exclusion.');
+
     // 11. Verify Foreign Key ON DELETE RESTRICT policy
     let deleteUserBlocked = false;
     try {
@@ -512,6 +670,12 @@ async function runControlledIntegrationCheck() {
     }
     if (createdTaskIds.length > 0) {
       await pool.query('DELETE FROM tasks WHERE id = ANY($1)', [createdTaskIds]);
+    }
+    if (createdQuestionIds.length > 0) {
+      await pool.query('DELETE FROM questions WHERE id = ANY($1)', [createdQuestionIds]);
+    }
+    if (createdDocumentIds.length > 0) {
+      await pool.query('DELETE FROM documents WHERE id = ANY($1)', [createdDocumentIds]);
     }
     if (createdUserIds.length > 0) {
       await pool.query('DELETE FROM users WHERE id = ANY($1)', [createdUserIds]);

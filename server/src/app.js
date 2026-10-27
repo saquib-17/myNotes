@@ -9,6 +9,8 @@ import notesRoutes from './routes/notes.routes.js';
 import collectionsRoutes from './routes/collections.routes.js';
 import tagsRoutes from './routes/tags.routes.js';
 import tasksRoutes from './routes/tasks.routes.js';
+import questionsRoutes from './routes/questions.routes.js';
+import documentsRoutes from './routes/documents.routes.js';
 import { getSessionOptions } from './config/session.config.js';
 import { getSessionStore } from './auth/sessionStore.js';
 
@@ -38,6 +40,8 @@ function getDefaultSessionMiddleware() {
  * @param {import('express').Router} [options.collectionsRouter] - Injected collections router
  * @param {import('express').Router} [options.tagsRouter] - Injected tags router
  * @param {import('express').Router} [options.tasksRouter] - Injected tasks router
+ * @param {import('express').Router} [options.questionsRouter] - Injected questions router
+ * @param {import('express').Router} [options.documentsRouter] - Injected documents router
  * @returns {express.Express}
  */
 export function createApp({
@@ -48,6 +52,8 @@ export function createApp({
   collectionsRouter,
   tagsRouter,
   tasksRouter,
+  questionsRouter,
+  documentsRouter,
 } = {}) {
   const app = express();
 
@@ -79,7 +85,7 @@ export function createApp({
     checkReadiness ? createReadyRouter({ checkReadiness }) : readyRoutes
   );
 
-  // Authentication, Private Notes, Collections, Tags, and Tasks routes with scoped session middleware
+  // Authentication, Private Notes, Collections, Tags, Tasks, and Questions routes with scoped session middleware
   const resolvedSessionMiddleware =
     sessionMiddleware !== undefined
       ? sessionMiddleware
@@ -91,12 +97,16 @@ export function createApp({
     app.use('/api/collections', resolvedSessionMiddleware, collectionsRouter || collectionsRoutes);
     app.use('/api/tags', resolvedSessionMiddleware, tagsRouter || tagsRoutes);
     app.use('/api/tasks', resolvedSessionMiddleware, tasksRouter || tasksRoutes);
+    app.use('/api/questions', resolvedSessionMiddleware, questionsRouter || questionsRoutes);
+    app.use('/api/documents', resolvedSessionMiddleware, documentsRouter || documentsRoutes);
   } else {
     app.use('/api/auth', authRouter || authRoutes);
     app.use('/api/notes', notesRouter || notesRoutes);
     app.use('/api/collections', collectionsRouter || collectionsRoutes);
     app.use('/api/tags', tagsRouter || tagsRoutes);
     app.use('/api/tasks', tasksRouter || tasksRoutes);
+    app.use('/api/questions', questionsRouter || questionsRoutes);
+    app.use('/api/documents', documentsRouter || documentsRoutes);
   }
 
   // Fallback for unknown API routes - returns structured JSON 404

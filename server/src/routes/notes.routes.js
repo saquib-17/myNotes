@@ -54,7 +54,7 @@ export function createNotesRouter({
       }
 
       // Strict property whitelist: reject unknown fields (e.g. user_id, version)
-      const allowedKeys = new Set(['title', 'content']);
+      const allowedKeys = new Set(['title', 'content', 'pinned']);
       for (const key of Object.keys(req.body)) {
         if (!allowedKeys.has(key)) {
           return res.status(400).json({
@@ -64,7 +64,14 @@ export function createNotesRouter({
         }
       }
 
-      const { title, content } = req.body;
+      const { title, content, pinned } = req.body;
+
+      if (pinned !== undefined && typeof pinned !== 'boolean') {
+        return res.status(400).json({
+          error: 'BadRequest',
+          message: 'Field "pinned" must be a boolean.',
+        });
+      }
 
       if (title === undefined) {
         return res.status(400).json({
@@ -89,6 +96,7 @@ export function createNotesRouter({
         title: normalizedTitle,
         contentJson: content,
         contentText,
+        pinned: Boolean(pinned),
       });
 
       return res.status(201).json(createdNote);
@@ -161,6 +169,7 @@ export function createNotesRouter({
         id: row.id,
         title: row.title,
         preview: generatePreview(row.content_text),
+        pinned: Boolean(row.pinned),
         version: row.version,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
@@ -239,7 +248,7 @@ export function createNotesRouter({
       }
 
       // Reject unknown fields
-      const allowedKeys = new Set(['title', 'content', 'expectedVersion']);
+      const allowedKeys = new Set(['title', 'content', 'expectedVersion', 'pinned']);
       for (const key of Object.keys(req.body)) {
         if (!allowedKeys.has(key)) {
           return res.status(400).json({
@@ -249,7 +258,14 @@ export function createNotesRouter({
         }
       }
 
-      const { title, content, expectedVersion } = req.body;
+      const { title, content, expectedVersion, pinned } = req.body;
+
+      if (pinned !== undefined && typeof pinned !== 'boolean') {
+        return res.status(400).json({
+          error: 'BadRequest',
+          message: 'Field "pinned" must be a boolean.',
+        });
+      }
 
       if (title === undefined) {
         return res.status(400).json({
@@ -290,6 +306,7 @@ export function createNotesRouter({
         title: normalizedTitle,
         contentJson: content,
         contentText,
+        pinned,
       });
 
       if (updateResult.notFound) {
@@ -316,6 +333,72 @@ export function createNotesRouter({
           code: err.code,
         });
       }
+      return next(err);
+    }
+  });
+
+  /**
+   * POST /api/notes/:id/pin
+   * Sets pinned = true for an active note owned by the authenticated user.
+   */
+  router.post('/:id/pin', requireCsrf, async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      if (!isValidUuid(id)) {
+        return res.status(400).json({
+          error: 'BadRequest',
+          message: 'Invalid note ID format.',
+        });
+      }
+
+      const result = await noteRepository.setNotePinned({
+        id,
+        userId: req.user.id,
+        pinned: true,
+      });
+
+      if (result.notFound) {
+        return res.status(404).json({
+          error: 'NotFound',
+          message: 'Note not found.',
+        });
+      }
+
+      return res.status(200).json(result.updatedNote);
+    } catch (err) {
+      return next(err);
+    }
+  });
+
+  /**
+   * POST /api/notes/:id/unpin
+   * Sets pinned = false for an active note owned by the authenticated user.
+   */
+  router.post('/:id/unpin', requireCsrf, async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      if (!isValidUuid(id)) {
+        return res.status(400).json({
+          error: 'BadRequest',
+          message: 'Invalid note ID format.',
+        });
+      }
+
+      const result = await noteRepository.setNotePinned({
+        id,
+        userId: req.user.id,
+        pinned: false,
+      });
+
+      if (result.notFound) {
+        return res.status(404).json({
+          error: 'NotFound',
+          message: 'Note not found.',
+        });
+      }
+
+      return res.status(200).json(result.updatedNote);
+    } catch (err) {
       return next(err);
     }
   });

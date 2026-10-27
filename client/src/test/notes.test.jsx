@@ -1566,4 +1566,259 @@ describe("Stage 5B: Frontend Notes & Rich-Text Editor", () => {
       });
     });
   });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 13. Note Pinning & Priority Sections
+  // ──────────────────────────────────────────────────────────────────────────
+  describe("13. Note Pinning & Priority Sections", () => {
+    const PINNED_NOTE = {
+      id: "pin-1111-1111-1111-111111111111",
+      title: "Pinned Important Guide",
+      preview: "Must-read reference content.",
+      pinned: true,
+      version: 1,
+      createdAt: "2026-10-27T00:00:00.000Z",
+      updatedAt: "2026-10-27T02:00:00.000Z",
+    };
+
+    const UNPINNED_NOTE = {
+      id: "unpin-2222-2222-2222-222222222222",
+      title: "Normal Scratch Note",
+      preview: "Daily meeting notes.",
+      pinned: false,
+      version: 1,
+      createdAt: "2026-10-27T00:00:00.000Z",
+      updatedAt: "2026-10-27T01:00:00.000Z",
+    };
+
+    it("1. Does NOT render Pinned section when there are zero pinned notes", async () => {
+      vi.spyOn(notesService, "fetchNotes").mockResolvedValue({
+        items: [UNPINNED_NOTE],
+        total: 1,
+        limit: 20,
+        offset: 0,
+        hasMore: false,
+      });
+
+      render(
+        <MemoryRouter>
+          <NotesPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Normal Scratch Note")).toBeInTheDocument();
+      });
+
+      // No "Pinned" or "Other Notes" heading should exist
+      expect(screen.queryByRole("heading", { name: "Pinned" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: "Other Notes" })).not.toBeInTheDocument();
+
+      // Pin button on the note card is accessible and indicates unpinned state
+      const pinBtn = screen.getByRole("button", { name: "Pin note" });
+      expect(pinBtn).toBeInTheDocument();
+      expect(pinBtn).toHaveAttribute("aria-pressed", "false");
+    });
+
+    it("2. Renders separate Pinned and Other Notes sections when pinned notes exist", async () => {
+      vi.spyOn(notesService, "fetchNotes").mockResolvedValue({
+        items: [PINNED_NOTE, UNPINNED_NOTE],
+        total: 2,
+        limit: 20,
+        offset: 0,
+        hasMore: false,
+      });
+
+      render(
+        <MemoryRouter>
+          <NotesPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("heading", { name: "Pinned" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Other Notes" })).toBeInTheDocument();
+      });
+
+      expect(screen.getByText("Pinned Important Guide")).toBeInTheDocument();
+      expect(screen.getByText("Normal Scratch Note")).toBeInTheDocument();
+
+      // Check pin buttons
+      expect(screen.getByRole("button", { name: "Unpin note" })).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("button", { name: "Pin note" })).toHaveAttribute("aria-pressed", "false");
+    });
+
+    it("3. Immediately toggles pin state and calls pinNote API without page reload", async () => {
+      vi.spyOn(notesService, "fetchNotes").mockResolvedValue({
+        items: [UNPINNED_NOTE],
+        total: 1,
+        limit: 20,
+        offset: 0,
+        hasMore: false,
+      });
+      const pinSpy = vi.spyOn(notesService, "pinNote").mockResolvedValue({
+        ...UNPINNED_NOTE,
+        pinned: true,
+      });
+
+      render(
+        <MemoryRouter>
+          <NotesPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Normal Scratch Note")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByRole("heading", { name: "Pinned" })).not.toBeInTheDocument();
+
+      // Click pin button
+      const pinBtn = screen.getByRole("button", { name: "Pin note" });
+      await userEvent.click(pinBtn);
+
+      // Immediately moves to Pinned section
+      await waitFor(() => {
+        expect(screen.getByRole("heading", { name: "Pinned" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Unpin note" })).toBeInTheDocument();
+      });
+
+      expect(pinSpy).toHaveBeenCalledWith(UNPINNED_NOTE.id, { csrfToken: "test-csrf-token" });
+    });
+
+    it("4. Immediately toggles unpin state and calls unpinNote API without page reload", async () => {
+      vi.spyOn(notesService, "fetchNotes").mockResolvedValue({
+        items: [PINNED_NOTE],
+        total: 1,
+        limit: 20,
+        offset: 0,
+        hasMore: false,
+      });
+      const unpinSpy = vi.spyOn(notesService, "unpinNote").mockResolvedValue({
+        ...PINNED_NOTE,
+        pinned: false,
+      });
+
+      render(
+        <MemoryRouter>
+          <NotesPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("heading", { name: "Pinned" })).toBeInTheDocument();
+      });
+
+      // Click unpin button
+      const unpinBtn = screen.getByRole("button", { name: "Unpin note" });
+      await userEvent.click(unpinBtn);
+
+      // Pinned section disappears since 0 pinned notes remain
+      await waitFor(() => {
+        expect(screen.queryByRole("heading", { name: "Pinned" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Pin note" })).toBeInTheDocument();
+      });
+
+      expect(unpinSpy).toHaveBeenCalledWith(PINNED_NOTE.id, { csrfToken: "test-csrf-token" });
+    });
+
+    it("5. Reverts optimistic pin update when API call fails", async () => {
+      vi.spyOn(notesService, "fetchNotes").mockResolvedValue({
+        items: [UNPINNED_NOTE],
+        total: 1,
+        limit: 20,
+        offset: 0,
+        hasMore: false,
+      });
+      vi.spyOn(notesService, "pinNote").mockRejectedValue(new Error("Network connection lost"));
+
+      render(
+        <MemoryRouter>
+          <NotesPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Normal Scratch Note")).toBeInTheDocument();
+      });
+
+      const pinBtn = screen.getByRole("button", { name: "Pin note" });
+      await userEvent.click(pinBtn);
+
+      // Rollback to unpinned after rejection and display error alert
+      await waitFor(() => {
+        expect(screen.getByRole("alert")).toBeInTheDocument();
+        expect(screen.getByText("Network connection lost")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Pin note" })).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Pinned" })).not.toBeInTheDocument();
+      });
+    });
+
+    it("6. Clicking pin button does NOT trigger link navigation", async () => {
+      vi.spyOn(notesService, "fetchNotes").mockResolvedValue({
+        items: [UNPINNED_NOTE],
+        total: 1,
+        limit: 20,
+        offset: 0,
+        hasMore: false,
+      });
+      vi.spyOn(notesService, "pinNote").mockResolvedValue({
+        ...UNPINNED_NOTE,
+        pinned: true,
+      });
+
+      const routes = [
+        { path: "/notes", element: <NotesPage /> },
+        { path: "/notes/:noteId", element: <div>Editor Mock</div> },
+      ];
+      const router = createMemoryRouter(routes, { initialEntries: ["/notes"] });
+
+      render(<RouterProvider router={router} />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Normal Scratch Note")).toBeInTheDocument();
+      });
+
+      const pinBtn = screen.getByRole("button", { name: "Pin note" });
+      await userEvent.click(pinBtn);
+
+      // We should still be on /notes, NOT on /notes/:id
+      expect(router.state.location.pathname).toBe("/notes");
+      expect(screen.queryByText("Editor Mock")).not.toBeInTheDocument();
+    });
+
+    it("7. NoteEditorPage allows toggling pin state via editor toolbar", async () => {
+      vi.spyOn(notesService, "fetchNoteById").mockResolvedValue({
+        ...SAMPLE_NOTE,
+        pinned: false,
+      });
+      const pinSpy = vi.spyOn(notesService, "pinNote").mockResolvedValue({
+        ...SAMPLE_NOTE,
+        pinned: true,
+      });
+
+      render(
+        <MemoryRouter initialEntries={[`/notes/${SAMPLE_NOTE.id}`]}>
+          <Routes>
+            <Route path="/notes/:noteId" element={<NoteEditorPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue("Architecture Planning")).toBeInTheDocument();
+      });
+
+      const editorPinBtn = screen.getByRole("button", { name: "Pin note" });
+      expect(editorPinBtn).toHaveAttribute("aria-pressed", "false");
+
+      await userEvent.click(editorPinBtn);
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Unpin note" })).toHaveAttribute("aria-pressed", "true");
+      });
+
+      expect(pinSpy).toHaveBeenCalledWith(SAMPLE_NOTE.id, { csrfToken: "test-csrf-token" });
+    });
+  });
 });

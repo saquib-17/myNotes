@@ -11,6 +11,8 @@ import { useAuth } from "../context/useAuth.js";
 import {
   fetchNoteById,
   updateNote,
+  pinNote,
+  unpinNote,
   trashNote,
   validateClientNote,
   NOTE_LIMITS,
@@ -70,6 +72,8 @@ export default function NoteEditorPage() {
   const [content, setContent] = useState(CANONICAL_EMPTY_DOC);
   const [expectedVersion, setExpectedVersion] = useState(1);
   const [updatedAt, setUpdatedAt] = useState("");
+  const [isPinned, setIsPinned] = useState(false);
+  const [isPinning, setIsPinning] = useState(false);
 
   // Saved baseline for dirty state detection
   const savedBaselineRef = useRef({ title: "", content: CANONICAL_EMPTY_DOC });
@@ -149,6 +153,7 @@ export default function NoteEditorPage() {
         setContent(loadedContent);
         setExpectedVersion(data.version);
         setUpdatedAt(data.updatedAt);
+        setIsPinned(Boolean(data.pinned));
 
         savedBaselineRef.current = {
           title: loadedTitle,
@@ -253,6 +258,9 @@ export default function NoteEditorPage() {
       setContent(updatedContent);
       setExpectedVersion(updated.version);
       setUpdatedAt(updated.updatedAt);
+      if (typeof updated.pinned === "boolean") {
+        setIsPinned(updated.pinned);
+      }
 
       savedBaselineRef.current = {
         title: updatedTitle,
@@ -299,6 +307,28 @@ export default function NoteEditorPage() {
     getCsrfToken,
     noteId,
   ]);
+
+  // Pin/Unpin action
+  const handleTogglePin = async () => {
+    if (isPinning || isTrashing) return;
+    setIsPinning(true);
+    const newPinned = !isPinned;
+    setIsPinned(newPinned);
+
+    try {
+      const csrfToken = await getCsrfToken();
+      if (newPinned) {
+        await pinNote(noteId, { csrfToken });
+      } else {
+        await unpinNote(noteId, { csrfToken });
+      }
+    } catch (err) {
+      setIsPinned(!newPinned);
+      setSaveError(err?.message || "Failed to update pin status.");
+    } finally {
+      setIsPinning(false);
+    }
+  };
 
   // Keyboard shortcut: Ctrl+S (Windows/Linux) or Cmd+S (macOS)
   useEffect(() => {
@@ -581,6 +611,34 @@ export default function NoteEditorPage() {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
+          {/* Pin / Unpin Button */}
+          <button
+            type="button"
+            disabled={isPinning || isTrashing}
+            onClick={handleTogglePin}
+            aria-label={isPinned ? "Unpin note" : "Pin note"}
+            aria-pressed={isPinned}
+            className={`inline-flex items-center gap-1.5 text-xs font-semibold py-1.5 px-3 rounded-lg border transition-colors ${
+              isPinned
+                ? "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
+                : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-900"
+            }`}
+          >
+            <svg
+              className={`h-3.5 w-3.5 ${isPinned ? "fill-amber-500 text-amber-700" : "fill-none text-stone-400"}`}
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="12" y1="17" x2="12" y2="22" />
+              <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.89A2 2 0 0 1 15 10.76V6h1a1 1 0 0 0 0-2H8a1 1 0 0 0 0 2h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.89A2 2 0 0 0 5 15.24V17z" />
+            </svg>
+            <span>{isPinned ? "Pinned" : "Pin"}</span>
+          </button>
+
           {/* Trash Button */}
           <button
             type="button"

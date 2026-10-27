@@ -307,7 +307,7 @@ describe('Notes REST API Route & Concurrency Tests', () => {
     ]);
 
     mockNoteRepo = {
-      createNote: async ({ userId, title, contentJson, contentText }) => {
+      createNote: async ({ userId, title, contentJson, contentText, pinned = false }) => {
         const id = mockNotes.size === 0
           ? VALID_NOTE_ID
           : `00000000-0000-4000-8000-${String(mockNotes.size).padStart(12, '0')}`;
@@ -318,6 +318,7 @@ describe('Notes REST API Route & Concurrency Tests', () => {
           title,
           content: contentJson,
           content_text: contentText,
+          pinned: Boolean(pinned),
           version: 1,
           createdAt: now.toISOString(),
           updatedAt: now.toISOString(),
@@ -328,6 +329,7 @@ describe('Notes REST API Route & Concurrency Tests', () => {
           id: note.id,
           title: note.title,
           content: note.content,
+          pinned: note.pinned,
           version: note.version,
           createdAt: note.createdAt,
           updatedAt: note.updatedAt,
@@ -348,8 +350,13 @@ describe('Notes REST API Route & Concurrency Tests', () => {
           );
         }
 
-        // Sort updated_at desc, id asc
-        notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        // Sort pinned desc, updated_at desc, id asc
+        notes.sort((a, b) => {
+          if (Boolean(a.pinned) !== Boolean(b.pinned)) {
+            return a.pinned ? -1 : 1;
+          }
+          return new Date(b.updatedAt) - new Date(a.updatedAt);
+        });
 
         const paged = notes.slice(offset, offset + limit);
         const hasMore = offset + limit < notes.length;
@@ -359,6 +366,7 @@ describe('Notes REST API Route & Concurrency Tests', () => {
             id: n.id,
             title: n.title,
             content_text: n.content_text,
+            pinned: Boolean(n.pinned),
             version: n.version,
             createdAt: n.createdAt,
             updatedAt: n.updatedAt,
@@ -379,13 +387,14 @@ describe('Notes REST API Route & Concurrency Tests', () => {
           id: note.id,
           title: note.title,
           content: note.content,
+          pinned: Boolean(note.pinned),
           version: note.version,
           createdAt: note.createdAt,
           updatedAt: note.updatedAt,
         };
       },
 
-      updateNote: async ({ id, userId, expectedVersion, title, contentJson, contentText }) => {
+      updateNote: async ({ id, userId, expectedVersion, title, contentJson, contentText, pinned }) => {
         const note = mockNotes.get(id);
         if (!note || note.userId !== userId || note.deletedAt !== null) {
           return { notFound: true };
@@ -397,6 +406,9 @@ describe('Notes REST API Route & Concurrency Tests', () => {
         note.title = title;
         note.content = contentJson;
         note.content_text = contentText;
+        if (typeof pinned === 'boolean') {
+          note.pinned = pinned;
+        }
         note.version += 1;
         note.updatedAt = new Date().toISOString();
 
@@ -405,6 +417,27 @@ describe('Notes REST API Route & Concurrency Tests', () => {
             id: note.id,
             title: note.title,
             content: note.content,
+            pinned: Boolean(note.pinned),
+            version: note.version,
+            createdAt: note.createdAt,
+            updatedAt: note.updatedAt,
+          },
+        };
+      },
+
+      setNotePinned: async ({ id, userId, pinned }) => {
+        const note = mockNotes.get(id);
+        if (!note || note.userId !== userId || note.deletedAt !== null) {
+          return { notFound: true };
+        }
+        note.pinned = Boolean(pinned);
+        note.updatedAt = new Date().toISOString();
+        return {
+          updatedNote: {
+            id: note.id,
+            title: note.title,
+            content: note.content,
+            pinned: Boolean(note.pinned),
             version: note.version,
             createdAt: note.createdAt,
             updatedAt: note.updatedAt,
@@ -822,6 +855,216 @@ describe('Notes REST API Route & Concurrency Tests', () => {
 
       assert.strictEqual(res.status, 413);
       assert.strictEqual(res.body.error, 'PayloadTooLarge');
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Note Pinning & Ordering
+  // ───────────────────────────────────────────────────────────────────────────
+  describe('Note Pinning & Ordering', () => {
+    let agentA;
+    let csrfA;
+    let agentB;
+    let csrfB;
+
+    beforeEach(async () => {
+      agentA = request.agent(app);
+      const resA = await agentA.get('/api/auth/csrf').expect(200);
+      csrfA = resA.body.csrfToken;
+
+      agentB = request.agent(app);
+      const resB = await agentB.get('/api/auth/csrf').expect(200);
+      csrfB = resB.body.csrfToken;
+    });
+
+    it('creates note with pinned = false by default', async () => {
+      const res = await agentA
+        .post('/api/notes')
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .send({ title: 'Default Pin Note', content: SAMPLE_DOC })
+        .expect(201);
+
+      assert.strictEqual(res.body.pinned, false);
+    });
+
+    it('pins and unpins an active note via dedicated endpoints', async () => {
+      const createRes = await agentA
+        .post('/api/notes')
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .send({ title: 'Toggle Pin Note', content: SAMPLE_DOC })
+        .expect(201);
+
+      const noteId = createRes.body.id;
+
+      // Pin the note
+      const pinRes = await agentA
+        .post(`/api/notes/${noteId}/pin`)
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .expect(200);
+
+      assert.strictEqual(pinRes.body.pinned, true);
+
+      // Unpin the note
+      const unpinRes = await agentA
+        .post(`/api/notes/${noteId}/unpin`)
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .expect(200);
+
+      assert.strictEqual(unpinRes.body.pinned, false);
+    });
+
+    it('enforces ownership: cannot pin or unpin notes belonging to another user', async () => {
+      const noteA = await agentA
+        .post('/api/notes')
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .send({ title: 'User A Secret Note', content: SAMPLE_DOC })
+        .expect(201);
+
+      // User B attempts to pin User A's note
+      await agentB
+        .post(`/api/notes/${noteA.body.id}/pin`)
+        .set('X-CSRF-Token', csrfB)
+        .set('x-user', 'B')
+        .expect(404);
+
+      // User B attempts to unpin User A's note
+      await agentB
+        .post(`/api/notes/${noteA.body.id}/unpin`)
+        .set('X-CSRF-Token', csrfB)
+        .set('x-user', 'B')
+        .expect(404);
+    });
+
+    it('rejects pinning soft-deleted notes with 404', async () => {
+      const createRes = await agentA
+        .post('/api/notes')
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .send({ title: 'Trash Then Pin Note', content: SAMPLE_DOC })
+        .expect(201);
+
+      const noteId = createRes.body.id;
+
+      // Trash the note
+      await agentA
+        .post(`/api/notes/${noteId}/trash`)
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .send({ expectedVersion: 1 })
+        .expect(204);
+
+      // Attempt to pin trashed note
+      await agentA
+        .post(`/api/notes/${noteId}/pin`)
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .expect(404);
+    });
+
+    it('updates pinned state via PATCH /api/notes/:id alongside content and version', async () => {
+      const createRes = await agentA
+        .post('/api/notes')
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .send({ title: 'Patch Pin Note', content: SAMPLE_DOC })
+        .expect(201);
+
+      const noteId = createRes.body.id;
+
+      const patchRes = await agentA
+        .patch(`/api/notes/${noteId}`)
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .send({
+          title: 'Patch Pin Note Updated',
+          content: SAMPLE_DOC,
+          expectedVersion: 1,
+          pinned: true,
+        })
+        .expect(200);
+
+      assert.strictEqual(patchRes.body.pinned, true);
+      assert.strictEqual(patchRes.body.version, 2);
+    });
+
+    it('lists pinned notes first followed by unpinned notes', async () => {
+      // Create Note 1 (unpinned)
+      const n1 = await agentA
+        .post('/api/notes')
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .send({ title: 'Older Unpinned Note', content: SAMPLE_DOC })
+        .expect(201);
+
+      // Create Note 2 (unpinned, newer)
+      const n2 = await agentA
+        .post('/api/notes')
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .send({ title: 'Newer Unpinned Note', content: SAMPLE_DOC })
+        .expect(201);
+
+      // Pin Note 1
+      await agentA
+        .post(`/api/notes/${n1.body.id}/pin`)
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .expect(200);
+
+      // Fetch list
+      const listRes = await agentA
+        .get('/api/notes')
+        .set('x-user', 'A')
+        .expect(200);
+
+      const items = listRes.body.items;
+      assert.ok(items.length >= 2);
+
+      // Note 1 (pinned) should appear before Note 2 (unpinned)
+      const idx1 = items.findIndex((i) => i.id === n1.body.id);
+      const idx2 = items.findIndex((i) => i.id === n2.body.id);
+      assert.ok(idx1 < idx2, 'Pinned Note 1 must appear before unpinned Note 2');
+      assert.strictEqual(items[idx1].pinned, true);
+      assert.strictEqual(items[idx2].pinned, false);
+    });
+
+    it('searches across both pinned and non-pinned notes preserving order', async () => {
+      const n1 = await agentA
+        .post('/api/notes')
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .send({ title: 'Searchable Alpha Pinned', content: SAMPLE_DOC })
+        .expect(201);
+
+      const n2 = await agentA
+        .post('/api/notes')
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .send({ title: 'Searchable Beta Regular', content: SAMPLE_DOC })
+        .expect(201);
+
+      await agentA
+        .post(`/api/notes/${n1.body.id}/pin`)
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .expect(200);
+
+      const searchRes = await agentA
+        .get('/api/notes?q=Searchable')
+        .set('x-user', 'A')
+        .expect(200);
+
+      const searchItems = searchRes.body.items.filter((i) =>
+        [n1.body.id, n2.body.id].includes(i.id)
+      );
+      assert.strictEqual(searchItems.length, 2);
+      assert.strictEqual(searchItems[0].id, n1.body.id, 'Pinned matching note comes first');
+      assert.strictEqual(searchItems[1].id, n2.body.id, 'Unpinned matching note comes second');
     });
   });
 });

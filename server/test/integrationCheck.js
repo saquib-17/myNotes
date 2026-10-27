@@ -9,6 +9,7 @@ import {
   findNoteByIdAndUserId,
   updateNote,
   trashNote,
+  setNotePinned,
 } from '../src/notes/noteRepository.js';
 import { derivePlainText, validateContent } from '../src/notes/contentValidator.js';
 
@@ -206,6 +207,34 @@ async function runControlledIntegrationCheck() {
     assert.strictEqual(searchNoMatch.rawItems.length, 0);
 
     console.log('[Integration Check] Verified parameterized search with literal LIKE wildcards.');
+
+    // 9.5. Verify Note Pinning & Priority Ordering in Real Database
+    const noteA2 = await createNote({
+      userId: userA.id,
+      title: 'Secondary Note (Newer)',
+      contentJson: docA,
+      contentText: 'Secondary content',
+      pool,
+    });
+    createdNoteIds.push(noteA2.id);
+
+    // Pin noteA (which was created earlier)
+    const pinRes = await setNotePinned({ id: noteA.id, userId: userA.id, pinned: true, pool });
+    assert.strictEqual(pinRes.updatedNote.pinned, true);
+
+    // List notes for userA: pinned noteA must be first even though noteA2 is newer
+    const listPinned = await findNotesByUserId({ userId: userA.id, pool });
+    assert.strictEqual(listPinned.rawItems[0].id, noteA.id, 'Pinned note must appear first in listing');
+    assert.strictEqual(listPinned.rawItems[0].pinned, true);
+    assert.strictEqual(listPinned.rawItems[1].id, noteA2.id);
+    assert.strictEqual(listPinned.rawItems[1].pinned, false);
+
+    // Clean up noteA2
+    await pool.query('DELETE FROM notes WHERE id = $1', [noteA2.id]);
+    const noteA2Idx = createdNoteIds.indexOf(noteA2.id);
+    if (noteA2Idx !== -1) createdNoteIds.splice(noteA2Idx, 1);
+
+    console.log('[Integration Check] Verified note pinning and priority ordering in PostgreSQL.');
 
     // 10. Verify Soft Deletion to Trash
     const trashResult = await trashNote({

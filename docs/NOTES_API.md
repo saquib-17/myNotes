@@ -104,10 +104,10 @@ Creates a new private note for the authenticated user.
 ### 3.2. List Notes
 `GET /api/notes`
 
-Retrieves a paginated list of active (non-trashed) notes for the authenticated user, sorted by `updated_at DESC, id ASC`.
+Retrieves a paginated list of active (non-trashed) notes for the authenticated user, prioritized with pinned notes first (`ORDER BY pinned DESC, updated_at DESC, id ASC`).
 
 - **Query Parameters:**
-  - `q` *(string, optional)*: Plain-text search query. Case-insensitive match across `title` and `content_text`. SQL wildcards (`%`, `_`, `\`) are escaped and matched literally. Max 200 characters.
+  - `q` *(string, optional)*: Plain-text search query. Case-insensitive match across `title` and `content_text`. SQL wildcards (`%`, `_`, `\`) are escaped and matched literally. Max 200 characters. Searches across both pinned and unpinned notes.
   - `limit` *(integer, optional)*: Page size (1 to 100, default: 20).
   - `offset` *(integer, optional)*: Starting offset (>= 0, default: 0).
 - **Responses:**
@@ -119,6 +119,7 @@ Retrieves a paginated list of active (non-trashed) notes for the authenticated u
           "id": "c1f2b6a2-15f1-46ee-86df-5883d65b75ad",
           "title": "My Note Title",
           "preview": "Note content goes here.",
+          "pinned": false,
           "version": 1,
           "createdAt": "2026-10-26T14:00:00.000Z",
           "updatedAt": "2026-10-26T14:00:00.000Z"
@@ -129,6 +130,7 @@ Retrieves a paginated list of active (non-trashed) notes for the authenticated u
           "id": "c1f2b6a2-15f1-46ee-86df-5883d65b75ad",
           "title": "My Note Title",
           "preview": "Note content goes here.",
+          "pinned": false,
           "version": 1,
           "createdAt": "2026-10-26T14:00:00.000Z",
           "updatedAt": "2026-10-26T14:00:00.000Z"
@@ -242,6 +244,60 @@ Moves an active note to the trash by setting `deleted_at = NOW()` and atomically
   - `403 Forbidden`: CSRF token invalid.
   - `404 Not Found`: Note does not exist, belongs to another user, or is already in trash.
   - `409 Conflict`: `NOTE_VERSION_CONFLICT` if `expectedVersion` is stale.
+
+---
+
+### 3.6. Pin Note
+`POST /api/notes/:id/pin`
+
+Sets `pinned = true` on an active note belonging to the authenticated user. Does not modify the note's document `version` or touch `content`.
+
+- **Headers:**
+  - `Content-Type: application/json`
+  - `X-CSRF-Token: <token>`
+- **Responses:**
+  - `200 OK`
+    ```json
+    {
+      "id": "c1f2b6a2-15f1-46ee-86df-5883d65b75ad",
+      "title": "My Note Title",
+      "pinned": true,
+      "version": 1,
+      "createdAt": "2026-10-26T14:00:00.000Z",
+      "updatedAt": "2026-10-26T14:00:00.000Z"
+    }
+    ```
+  - `400 Bad Request`: Malformed UUID.
+  - `401 Unauthorized`: Unauthenticated.
+  - `403 Forbidden`: CSRF token invalid.
+  - `404 Not Found`: Note does not exist, belongs to another user, or is in trash.
+
+---
+
+### 3.7. Unpin Note
+`POST /api/notes/:id/unpin`
+
+Sets `pinned = false` on an active note belonging to the authenticated user.
+
+- **Headers:**
+  - `Content-Type: application/json`
+  - `X-CSRF-Token: <token>`
+- **Responses:**
+  - `200 OK`
+    ```json
+    {
+      "id": "c1f2b6a2-15f1-46ee-86df-5883d65b75ad",
+      "title": "My Note Title",
+      "pinned": false,
+      "version": 1,
+      "createdAt": "2026-10-26T14:00:00.000Z",
+      "updatedAt": "2026-10-26T14:00:00.000Z"
+    }
+    ```
+  - `400 Bad Request`: Malformed UUID.
+  - `401 Unauthorized`: Unauthenticated.
+  - `403 Forbidden`: CSRF token invalid.
+  - `404 Not Found`: Note does not exist, belongs to another user, or is in trash.
 
 ---
 

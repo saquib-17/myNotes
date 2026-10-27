@@ -18,6 +18,7 @@ export function escapeLikeWildcards(str) {
  * @param {string} params.title
  * @param {object} params.contentJson
  * @param {string} params.contentText
+ * @param {boolean} [params.pinned=false]
  * @param {import('pg').Pool} [params.pool]
  * @returns {Promise<object>} Created note record
  */
@@ -26,15 +27,16 @@ export async function createNote({
   title,
   contentJson,
   contentText,
+  pinned = false,
   pool = getPool(),
 }) {
   const query = `
-    INSERT INTO notes (user_id, title, content_json, content_text, version)
-    VALUES ($1, $2, $3, $4, 1)
-    RETURNING id, title, content_json AS content, version, created_at AS "createdAt", updated_at AS "updatedAt";
+    INSERT INTO notes (user_id, title, content_json, content_text, pinned, version)
+    VALUES ($1, $2, $3, $4, COALESCE($5, false), 1)
+    RETURNING id, title, content_json AS content, pinned, version, created_at AS "createdAt", updated_at AS "updatedAt";
   `;
 
-  const values = [userId, title, JSON.stringify(contentJson), contentText];
+  const values = [userId, title, JSON.stringify(contentJson), contentText, Boolean(pinned)];
   const result = await pool.query(query, values);
   return result.rows[0];
 }
@@ -85,10 +87,10 @@ export async function findNotesByUserId({
   const offsetParamIdx = selectValues.length;
 
   const query = `
-    SELECT id, title, content_text, version, created_at AS "createdAt", updated_at AS "updatedAt"
+    SELECT id, title, content_text, pinned, version, created_at AS "createdAt", updated_at AS "updatedAt"
     FROM notes
     WHERE ${conditions.join(' AND ')}
-    ORDER BY updated_at DESC, id ASC
+    ORDER BY pinned DESC, updated_at DESC, id ASC
     LIMIT $${limitParamIdx} OFFSET $${offsetParamIdx};
   `;
 
@@ -120,7 +122,7 @@ export async function findNoteByIdAndUserId({
   pool = getPool(),
 }) {
   const query = `
-    SELECT id, title, content_json AS content, version, created_at AS "createdAt", updated_at AS "updatedAt"
+    SELECT id, title, content_json AS content, pinned, version, created_at AS "createdAt", updated_at AS "updatedAt"
     FROM notes
     WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL;
   `;
@@ -139,6 +141,7 @@ export async function findNoteByIdAndUserId({
  * @param {string} params.title
  * @param {object} params.contentJson
  * @param {string} params.contentText
+ * @param {boolean} [params.pinned]
  * @param {import('pg').Pool} [params.pool]
  * @returns {Promise<{ updatedNote?: object, notFound?: boolean, conflict?: boolean }>}
  */
@@ -149,6 +152,7 @@ export async function updateNote({
   title,
   contentJson,
   contentText,
+  pinned,
   pool = getPool(),
 }) {
   const updateQuery = `
@@ -156,19 +160,21 @@ export async function updateNote({
     SET title = $1,
         content_json = $2,
         content_text = $3,
+        pinned = COALESCE($4, pinned),
         version = version + 1,
         updated_at = now()
-    WHERE id = $4
-      AND user_id = $5
+    WHERE id = $5
+      AND user_id = $6
       AND deleted_at IS NULL
-      AND version = $6
-    RETURNING id, title, content_json AS content, version, created_at AS "createdAt", updated_at AS "updatedAt";
+      AND version = $7
+    RETURNING id, title, content_json AS content, pinned, version, created_at AS "createdAt", updated_at AS "updatedAt";
   `;
 
   const values = [
     title,
     JSON.stringify(contentJson),
     contentText,
+    typeof pinned === 'boolean' ? pinned : null,
     id,
     userId,
     expectedVersion,
@@ -244,4 +250,38 @@ export async function trashNote({
   }
 
   return { conflict: true, currentVersion: row.version };
+}
+
+/**
+ * Toggles or sets a note's pinned state.
+ *
+ * @param {object} params
+ * @param {string} params.id
+ * @param {string} params.userId
+ * @param {boolean} params.pinned
+ * @param {import('pg').Pool} [params.pool]
+ * @returns {Promise<{ updatedNote?: object, notFound?: boolean }>}
+ */
+export async function setNotePinned({
+  id,
+  userId,
+  pinned,
+  pool = getPool(),
+}) {
+  const query = `
+    UPDATE notes
+    SET pinned = $1,
+        updated_at = now()
+    WHERE id = $2
+      AND user_id = $3
+      AND deleted_at IS NULL
+    RETURNING id, title, content_json AS content, pinned, version, created_at AS "createdAt", updated_at AS "updatedAt";
+  `;
+
+  const result = await pool.query(query, [Boolean(pinned), id, userId]);
+  if (result.rowCount === 1) {
+    return { updatedNote: result.rows[0] };
+  }
+
+  return { notFound: true };
 }

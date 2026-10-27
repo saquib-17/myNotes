@@ -88,11 +88,16 @@ export async function fetchNotes({ q = '', limit = 20, offset = 0, signal } = {}
     );
   }
 
-  const rawList = Array.isArray(data.notes)
-    ? data.notes
-    : Array.isArray(data.items)
-    ? data.items
-    : [];
+  const rawList = (
+    Array.isArray(data.notes)
+      ? data.notes
+      : Array.isArray(data.items)
+      ? data.items
+      : []
+  ).map((note) => ({
+    ...note,
+    pinned: Boolean(note.pinned),
+  }));
   const normalizedTotal =
     typeof data.total === 'number'
       ? data.total
@@ -194,7 +199,7 @@ export async function createNote({ title = '', content, csrfToken }) {
  * @param {string} params.csrfToken
  * @returns {Promise<{ id: string, title: string, content: object, version: number, createdAt: string, updatedAt: string }>}
  */
-export async function updateNote(id, { title, content, expectedVersion, csrfToken }) {
+export async function updateNote(id, { title, content, expectedVersion, pinned, csrfToken }) {
   if (!csrfToken) {
     throw new Error('CSRF token is required for note update.');
   }
@@ -209,6 +214,9 @@ export async function updateNote(id, { title, content, expectedVersion, csrfToke
     content,
     expectedVersion,
   };
+  if (typeof pinned === 'boolean') {
+    payload.pinned = pinned;
+  }
 
   const response = await fetch(`${API_BASE}/${id}`, {
     method: 'PATCH',
@@ -279,4 +287,83 @@ export async function trashNote(id, { expectedVersion, csrfToken }) {
     data?.code || data?.error
   );
 }
+
+/**
+ * Pins a note.
+ *
+ * @param {string} id - Note UUID
+ * @param {object} params
+ * @param {string} params.csrfToken
+ * @returns {Promise<{ id: string, pinned: boolean, [key: string]: any }>}
+ */
+export async function pinNote(id, { csrfToken }) {
+  if (!csrfToken) {
+    throw new Error('CSRF token is required to pin a note.');
+  }
+
+  const response = await fetch(`${API_BASE}/${id}/pin`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'X-Csrf-Token': csrfToken,
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to pin note (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return {
+    ...data,
+    pinned: Boolean(data.pinned),
+  };
+}
+
+/**
+ * Unpins a note.
+ *
+ * @param {string} id - Note UUID
+ * @param {object} params
+ * @param {string} params.csrfToken
+ * @returns {Promise<{ id: string, pinned: boolean, [key: string]: any }>}
+ */
+export async function unpinNote(id, { csrfToken }) {
+  if (!csrfToken) {
+    throw new Error('CSRF token is required to unpin a note.');
+  }
+
+  const response = await fetch(`${API_BASE}/${id}/unpin`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'X-Csrf-Token': csrfToken,
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to unpin note (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return {
+    ...data,
+    pinned: Boolean(data.pinned),
+  };
+}
+
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth.js";
-import { fetchNotes, createNote } from "../services/notes.service.js";
+import { fetchNotes, createNote, pinNote, unpinNote } from "../services/notes.service.js";
 import { CANONICAL_EMPTY_DOC } from "../constants/editor.js";
 import LoadingState from "../components/LoadingState.jsx";
 import ErrorState from "../components/ErrorState.jsx";
@@ -52,6 +52,9 @@ export default function NotesPage() {
 
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState(null);
+
+  const [pinningId, setPinningId] = useState(null);
+  const [pinError, setPinError] = useState(null);
 
   // Debounce search input by 300ms
   const searchTimeoutRef = useRef(null);
@@ -180,8 +183,99 @@ export default function NotesPage() {
     }
   };
 
+  const handleTogglePin = async (e, note) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (pinningId === note.id) return;
+    setPinningId(note.id);
+    setPinError(null);
+
+    const originalPinned = Boolean(note.pinned);
+    const newPinned = !originalPinned;
+
+    // Optimistically update list
+    setNotes((prevNotes) =>
+      prevNotes.map((n) => (n.id === note.id ? { ...n, pinned: newPinned } : n))
+    );
+
+    try {
+      const csrfToken = await getCsrfToken();
+      if (newPinned) {
+        await pinNote(note.id, { csrfToken });
+      } else {
+        await unpinNote(note.id, { csrfToken });
+      }
+    } catch (err) {
+      // Revert optimistic update on failure
+      setNotes((prevNotes) =>
+        prevNotes.map((n) => (n.id === note.id ? { ...n, pinned: originalPinned } : n))
+      );
+      setPinError(err?.message || "Failed to update pin status.");
+    } finally {
+      setPinningId(null);
+    }
+  };
+
+  const renderNoteCard = (note) => {
+    const isPinned = Boolean(note.pinned);
+    const isActionInFlight = pinningId === note.id;
+
+    return (
+      <Link
+        key={note.id}
+        to={`/notes/${note.id}`}
+        className="group relative flex flex-col justify-between rounded-xl border border-stone-200 bg-white p-5 shadow-2xs transition-all hover:border-teal-300 hover:shadow-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
+      >
+        <div>
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="text-base font-semibold text-stone-900 group-hover:text-teal-800 line-clamp-1">
+              {note.title || "Untitled note"}
+            </h2>
+            <button
+              type="button"
+              disabled={isActionInFlight}
+              onClick={(e) => handleTogglePin(e, note)}
+              aria-label={isPinned ? "Unpin note" : "Pin note"}
+              aria-pressed={isPinned}
+              title={isPinned ? "Unpin note" : "Pin note"}
+              className={`-mr-1.5 -mt-1.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                isPinned
+                  ? "text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                  : "text-stone-400 opacity-60 hover:opacity-100 hover:bg-stone-100 hover:text-stone-700"
+              }`}
+            >
+              <svg
+                className={`h-4 w-4 ${isPinned ? "fill-amber-500 text-amber-700" : "fill-none text-stone-400"}`}
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <line x1="12" y1="17" x2="12" y2="22" />
+                <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.89A2 2 0 0 1 15 10.76V6h1a1 1 0 0 0 0-2H8a1 1 0 0 0 0 2h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.89A2 2 0 0 0 5 15.24V17z" />
+              </svg>
+            </button>
+          </div>
+          <p className="mt-2 text-sm text-stone-600 line-clamp-2 leading-relaxed min-h-[2.5rem]">
+            {note.preview || <span className="italic text-stone-400">Empty note</span>}
+          </p>
+        </div>
+        <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs text-stone-400">
+          <span>Updated {formatTimestamp(note.updatedAt)}</span>
+          <span className="font-mono text-[11px] text-stone-300">v{note.version}</span>
+        </div>
+      </Link>
+    );
+  };
+
   const currentStart = total === 0 ? 0 : offset + 1;
   const currentEnd = Math.min(offset + PAGE_SIZE, total);
+
+  const pinnedNotes = notes.filter((n) => n.pinned);
+  const regularNotes = notes.filter((n) => !n.pinned);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -253,6 +347,37 @@ export default function NotesPage() {
           <button
             type="button"
             onClick={() => setCreateError(null)}
+            className="text-xs font-semibold text-red-700 hover:text-red-900 underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Pin Update Failure Feedback */}
+      {pinError && (
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 flex items-center justify-between gap-3"
+        >
+          <div className="flex items-center gap-2">
+            <svg
+              className="h-4 w-4 text-red-500 flex-shrink-0"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <span>{pinError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPinError(null)}
             className="text-xs font-semibold text-red-700 hover:text-red-900 underline"
           >
             Dismiss
@@ -344,29 +469,49 @@ export default function NotesPage() {
         )
       ) : (
         /* Notes Cards List */
-        <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {notes.map((note) => (
-              <Link
-                key={note.id}
-                to={`/notes/${note.id}`}
-                className="group relative flex flex-col justify-between rounded-xl border border-stone-200 bg-white p-5 shadow-2xs transition-all hover:border-teal-300 hover:shadow-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
-              >
-                <div>
-                  <h2 className="text-base font-semibold text-stone-900 group-hover:text-teal-800 line-clamp-1">
-                    {note.title || "Untitled note"}
-                  </h2>
-                  <p className="mt-2 text-sm text-stone-600 line-clamp-2 leading-relaxed min-h-[2.5rem]">
-                    {note.preview || <span className="italic text-stone-400">Empty note</span>}
-                  </p>
+        <div className="space-y-6">
+          {/* Pinned Notes Section */}
+          {pinnedNotes.length > 0 && (
+            <section aria-labelledby="pinned-notes-heading" className="space-y-3">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-stone-500">
+                <svg
+                  className="h-3.5 w-3.5 text-amber-600 fill-amber-500"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <line x1="12" y1="17" x2="12" y2="22" />
+                  <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.89A2 2 0 0 1 15 10.76V6h1a1 1 0 0 0 0-2H8a1 1 0 0 0 0 2h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.89A2 2 0 0 0 5 15.24V17z" />
+                </svg>
+                <h2 id="pinned-notes-heading">Pinned</h2>
+                <span className="text-stone-400 font-normal">({pinnedNotes.length})</span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {pinnedNotes.map((note) => renderNoteCard(note))}
+              </div>
+            </section>
+          )}
+
+          {/* Regular / Other Notes Section */}
+          {regularNotes.length > 0 && (
+            <section
+              aria-labelledby={pinnedNotes.length > 0 ? "other-notes-heading" : undefined}
+              className="space-y-3"
+            >
+              {pinnedNotes.length > 0 && (
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-stone-500">
+                  <h2 id="other-notes-heading">Other Notes</h2>
+                  <span className="text-stone-400 font-normal">({regularNotes.length})</span>
                 </div>
-                <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs text-stone-400">
-                  <span>Updated {formatTimestamp(note.updatedAt)}</span>
-                  <span className="font-mono text-[11px] text-stone-300">v{note.version}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
+              )}
+              <div className="grid gap-3 sm:grid-cols-2">
+                {regularNotes.map((note) => renderNoteCard(note))}
+              </div>
+            </section>
+          )}
 
           {/* Pagination Toolbar */}
           <div className="flex items-center justify-between border-t border-stone-200 pt-4 text-sm text-stone-600">

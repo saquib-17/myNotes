@@ -124,6 +124,16 @@ Retrieves a paginated list of active (non-trashed) notes for the authenticated u
           "updatedAt": "2026-10-26T14:00:00.000Z"
         }
       ],
+      "items": [
+        {
+          "id": "c1f2b6a2-15f1-46ee-86df-5883d65b75ad",
+          "title": "My Note Title",
+          "preview": "Note content goes here.",
+          "version": 1,
+          "createdAt": "2026-10-26T14:00:00.000Z",
+          "updatedAt": "2026-10-26T14:00:00.000Z"
+        }
+      ],
       "total": 1,
       "limit": 20,
       "offset": 0,
@@ -279,3 +289,36 @@ node test/integrationCheck.js
 cd server
 npm run lint
 ```
+
+---
+
+## 6. Client-Side Manual Save Model & Concurrency Architecture (Stage 5 Stabilization)
+
+In the Stage 5 stabilization pass, automatic background autosave was completely removed by user decision following issues with fluctuating save indicators. The editor operates on a pure explicit manual save model:
+
+1. **Explicit Save Triggers Only:**
+   - **Save Button:** Clicking the "Save note" button.
+   - **Keyboard Shortcut:** Pressing `Ctrl+S` (Windows/Linux) or `Cmd+S` (macOS), which intercepts and cancels the browser's default "Save Page" dialog (`e.preventDefault()`).
+   - Typing, pausing, blurring inputs, router transitions, and component unmounts **never** send automatic PATCH requests.
+
+2. **In-Flight Save Freeze:**
+   - When a manual save is initiated (`isSaving = true`), the editor is put into read-only mode (`editable={false}`), input controls and formatting toolbar buttons are disabled, and the Save button displays "Saving...".
+   - This enforces clear transactional boundaries and prevents interleaving unsaved keystrokes with the in-flight server payload.
+   - Once the server responds, input controls are immediately restored to fully editable mode.
+
+3. **Key-Order-Agnostic Baseline Comparison (`deepEqual`):**
+   - The editor uses a recursive structural equality check (`deepEqual`) and content normalization (`normalizeEditorContent`) instead of string comparison, eliminating false dirty states caused by ProseMirror JSON attribute key ordering or serialization subtleties.
+   - Initial load calls `commands.setContent(loadedContent, { emitUpdate: false })` to prevent spurious `onUpdate` events during note initialization.
+
+4. **Error Handling & Failure Recovery:**
+   - **409 Conflict (`NOTE_VERSION_CONFLICT`):** Retains the local draft in memory, displays a conflict banner, and provides "Copy local draft" (with clipboard and manual textarea fallback) and a confirmed "Discard and reload latest" action.
+   - **401 Unauthorized (`UNAUTHENTICATED`):** Retains the local draft in memory, alerts the user that the session has expired, and provides draft copy and login links.
+   - **400 / 413 Validation Errors:** Retains local draft in memory, shows the validation error, and allows the user to correct the draft and save again.
+   - **5xx / Network Errors:** Marks status as `Save failed`, preserves the local draft in memory, restores input editing, and enables an explicit "Retry" action with the confirmed `expectedVersion`.
+   - *(Note: In-memory drafts are retained during the active session. If the user closes or refreshes the browser tab, the draft is subject to browser memory lifecycle and is not written to offline disk storage).*
+
+5. **Router Navigation Blocking & Shell Logout Coordination:**
+   - Powered by React Router v7 Data Routers (`createBrowserRouter`, `RouterProvider`) with native `useBlocker` when `isDirty` is true.
+   - Intercepts in-app links and browser Back/Forward navigation, prompting the user with a modal offering "Stay" vs "Discard changes and leave".
+   - `AppLayout` checks dirty state via React Router outlet context before executing shell logout, prompting the user to confirm discarding changes before the session is destroyed on the backend.
+   - Trashing a note bypasses dirty warnings upon HTTP 204 and navigates cleanly to `/notes`.

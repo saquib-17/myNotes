@@ -84,3 +84,18 @@ This document records the foundational architectural decisions agreed upon for M
 - **Rationale:** MyNotes is a personal workspace. OCC prevents multi-tab or concurrent process overwrites. Clients submit `expectedVersion`; stale versions return HTTP 409 `NOTE_VERSION_CONFLICT`. In Stage 5B, the editor preserves the user's local draft, provides copy utilities, and requires explicit user confirmation before discarding local changes to reload the latest version.
 - **Status:** **CONFIRMED (Stage 5A/5B Completed)**.
 
+
+### DEC-08: Pure Explicit Manual Save Model, Data Router Navigation Guard & Shell Coordination
+- **Options:**
+  - Automatic background autosave (debounced mutation queue) vs pure explicit manual saving.
+  - Ad-hoc global DOM click/popstate capture interception vs React Router native `useBlocker`.
+  - Silent session destruction on logout vs dirty-editor shell intercept modal.
+  - Continuously editable inputs during network roundtrips vs read-only freeze during in-flight saves.
+- **Decision:** **Pure Explicit Manual Save Model** (Save button click and `Ctrl+S` / `Cmd+S` shortcut) with read-only freeze during in-flight saves, key-order-agnostic structural comparison (`deepEqual`), native React Router `useBlocker` navigation blocking, and proactive dirty-state coordination with `AppLayout` before session destruction. Autosave is completely removed.
+- **Rationale:**
+  - **Root cause of autosave disruption:** Tiptap's `commands.setContent` without `{ emitUpdate: false }` fired `onUpdate` immediately on load, and `JSON.stringify` comparison was fragile against ProseMirror key ordering and normalization differences, creating false dirty states that provoked repeated status fluctuations and disrupted the user's flow.
+  - **User decision:** Per direct user requirement, autosave was removed entirely rather than masked with longer debounces or toggles. Manual saving provides a calm, completely predictable, reliable authoring experience.
+  - **In-flight freeze:** When a save is triggered, the editor is temporarily set to read-only (`editable={false}`), input controls are disabled, and the button indicates "Saving...". This cleanly enforces transactional boundaries and prevents interleaving unsaved keystrokes with in-flight server payloads.
+  - **Navigation guard & logout protection:** React Router v7 Data Routers (`createBrowserRouter`, `RouterProvider`) cleanly power `useBlocker` across in-app links and browser history navigation. Shell logout queries the dirty state via outlet context before calling `logout()`, ensuring users are prompted before their server session is destroyed with unsaved in-memory drafts.
+  - **Draft preservation on failure:** If an explicit save encounters a network or 5xx error, or a 409 conflict, the user's local draft remains in memory, inputs are re-enabled, and explicit retry or conflict-resolution actions are provided. (Note: drafts are held in component memory during an active session and are not persisted to offline browser storage).
+- **Status:** **CONFIRMED (Stabilization Pass Completed)**.

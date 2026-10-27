@@ -166,8 +166,14 @@ export function createNotesRouter({
         updatedAt: row.updatedAt,
       }));
 
+      const total = typeof result.total === 'number'
+        ? result.total
+        : (result.offset + items.length + (result.hasMore ? 1 : 0));
+
       return res.status(200).json({
+        notes: items,
         items,
+        total,
         limit: result.limit,
         offset: result.offset,
         hasMore: result.hasMore,

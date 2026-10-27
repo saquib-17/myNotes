@@ -83,6 +83,11 @@ export default function AppLayout() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
 
+  // Editor coordination state
+  const [editorDirty, setEditorDirty] = useState(false);
+  const [editorSaving, setEditorSaving] = useState(false);
+  const [showLogoutConfirmModal, setShowLogoutConfirmModal] = useState(false);
+
   const menuButtonRef = useRef(null);
   const closeButtonRef = useRef(null);
   const drawerRef = useRef(null);
@@ -109,6 +114,15 @@ export default function AppLayout() {
         "Sign-out failed — your session may still be active on the server. Try again or close the browser."
       );
     }
+  }
+
+  // Intercept logout if an active editor has unsaved changes
+  function handleLogoutAttempt() {
+    if (editorDirty) {
+      setShowLogoutConfirmModal(true);
+      return;
+    }
+    handleLogout();
   }
 
   // Open mobile drawer with focus trap preparation
@@ -144,45 +158,33 @@ export default function AppLayout() {
         return;
       }
 
-      if (e.key === "Tab" && drawerRef.current) {
-        const focusable = drawerRef.current.querySelectorAll(
-          'a[href], button:not([disabled]), [tabindex="0"]'
+      if (e.key === "Tab") {
+        const focusableElements = drawerRef.current?.querySelectorAll(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
         );
-        if (focusable.length === 0) return;
+        if (!focusableElements || focusableElements.length === 0) return;
 
-        const firstElement = focusable[0];
-        const lastElement = focusable[focusable.length - 1];
+        const first = focusableElements[0];
+        const last = focusableElements[focusableElements.length - 1];
 
-        if (e.shiftKey && document.activeElement === firstElement) {
+        if (e.shiftKey && document.activeElement === first) {
           e.preventDefault();
-          lastElement.focus();
-        } else if (!e.shiftKey && document.activeElement === lastElement) {
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
           e.preventDefault();
-          firstElement.focus();
+          first.focus();
         }
       }
     }
 
-    document.addEventListener("keydown", handleKeyDown);
-
+    window.addEventListener("keydown", handleKeyDown);
     return () => {
       document.body.style.overflow = originalOverflow;
-      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, [isDrawerOpen, closeDrawer]);
 
-  // Automatically close drawer when window resizes to desktop breakpoint (>= 768px)
-  useEffect(() => {
-    function handleResize() {
-      if (window.innerWidth >= 768 && isDrawerOpen) {
-        setIsDrawerOpen(false);
-      }
-    }
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [isDrawerOpen]);
-
-  // Navigation link content renderer
+  // Render navigation links grouped by category
   const renderNavLinks = (onItemClick) => (
     <nav className="flex-1 space-y-6 px-3 py-4 overflow-y-auto" aria-label="Main Navigation">
       {NAV_GROUPS.map((group) => (
@@ -215,18 +217,18 @@ export default function AppLayout() {
     </nav>
   );
 
-  // User identity and logout section
+  // Render user profile area & logout action
   const renderUserSection = () => (
-    <div className="border-t border-stone-200 p-4 bg-stone-50/50">
+    <div className="border-t border-stone-200 p-4 space-y-2">
       {logoutError && (
         <div
           role="alert"
-          aria-live="assertive"
-          className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900"
+          className="rounded-md bg-red-50 p-2.5 text-xs text-red-700 border border-red-200"
         >
           {logoutError}
         </div>
       )}
+
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <div
@@ -245,7 +247,7 @@ export default function AppLayout() {
 
         <button
           type="button"
-          onClick={handleLogout}
+          onClick={handleLogoutAttempt}
           disabled={isLoggingOut}
           className="inline-flex flex-shrink-0 items-center gap-1 rounded-md border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-600 shadow-2xs hover:bg-stone-50 hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-teal-700 disabled:opacity-60"
           aria-label="Log out of MyNotes"
@@ -380,6 +382,47 @@ export default function AppLayout() {
         </div>
       )}
 
+      {/* Unsaved Changes Shell Logout Guard Modal */}
+      {showLogoutConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl space-y-4">
+            <div className="flex items-center gap-3 text-amber-600">
+              <svg className="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+              <h2 className="text-base font-semibold text-stone-900">Unsaved changes</h2>
+            </div>
+            <p className="text-sm text-stone-600">
+              You have unsaved changes in your note. Signing out will discard your unsaved edits. Are you sure you want to sign out?
+            </p>
+            {editorSaving && (
+              <p className="text-xs font-medium text-amber-700 bg-amber-50 p-2.5 rounded border border-amber-200">
+                A save is currently in progress. Signing out now may interrupt the save.
+              </p>
+            )}
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirmModal(false)}
+                className="rounded-lg border border-stone-300 bg-white px-3.5 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+              >
+                Stay and keep editing
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLogoutConfirmModal(false);
+                  handleLogout();
+                }}
+                className="rounded-lg bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-700"
+              >
+                Discard changes and sign out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col md:pl-64 lg:pl-72 min-w-0">
         {/* Page Top Header */}
@@ -393,7 +436,7 @@ export default function AppLayout() {
           tabIndex={-1}
           className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 focus:outline-hidden"
         >
-          <Outlet context={{ insideAppLayout: true }} />
+          <Outlet context={{ insideAppLayout: true, setEditorDirty, setEditorSaving }} />
         </main>
       </div>
     </div>

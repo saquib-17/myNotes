@@ -363,6 +363,7 @@ describe('Notes REST API Route & Concurrency Tests', () => {
             createdAt: n.createdAt,
             updatedAt: n.updatedAt,
           })),
+          total: notes.length,
           limit,
           offset,
           hasMore,
@@ -608,7 +609,10 @@ describe('Notes REST API Route & Concurrency Tests', () => {
         .expect(200);
 
       assert.strictEqual(res.body.items.length, 1);
+      assert.strictEqual(res.body.notes.length, 1, 'notes property must alias items for client/spec contract');
+      assert.strictEqual(res.body.total, 1, 'total count must be present in response');
       assert.strictEqual(res.body.items[0].title, 'User A Note 1');
+      assert.strictEqual(res.body.notes[0].title, 'User A Note 1');
       assert.ok(res.body.items[0].preview.includes('First line of User A note.'));
       assert.strictEqual(res.body.items[0].content, undefined, 'List items must not contain raw editor JSON');
     });

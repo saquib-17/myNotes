@@ -70,12 +70,19 @@ export async function findNotesByUserId({
     );
   }
 
-  // Request limit + 1 rows to detect hasMore without an extra COUNT(*) query
-  values.push(limit + 1);
-  const limitParamIdx = values.length;
+  // Count total matching notes for accurate pagination
+  const countQuery = `
+    SELECT COUNT(*)::int AS total
+    FROM notes
+    WHERE ${conditions.join(' AND ')};
+  `;
+  const countResult = await pool.query(countQuery, values);
+  const total = countResult.rows[0]?.total ?? 0;
 
-  values.push(offset);
-  const offsetParamIdx = values.length;
+  // Request limit + 1 rows to detect hasMore
+  const selectValues = [...values, limit + 1, offset];
+  const limitParamIdx = selectValues.length - 1;
+  const offsetParamIdx = selectValues.length;
 
   const query = `
     SELECT id, title, content_text, version, created_at AS "createdAt", updated_at AS "updatedAt"
@@ -85,12 +92,13 @@ export async function findNotesByUserId({
     LIMIT $${limitParamIdx} OFFSET $${offsetParamIdx};
   `;
 
-  const result = await pool.query(query, values);
+  const result = await pool.query(query, selectValues);
   const hasMore = result.rows.length > limit;
   const rawItems = hasMore ? result.rows.slice(0, limit) : result.rows;
 
   return {
     rawItems,
+    total,
     limit,
     offset,
     hasMore,

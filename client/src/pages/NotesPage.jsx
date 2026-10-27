@@ -55,6 +55,8 @@ export default function NotesPage() {
 
   // Debounce search input by 300ms
   const searchTimeoutRef = useRef(null);
+  // Stale request guard ref: prevents obsolete out-of-order network responses from overwriting latest list
+  const fetchGenerationRef = useRef(0);
 
   const handleSearchChange = (e) => {
     const val = e.target.value;
@@ -79,8 +81,9 @@ export default function NotesPage() {
     setActiveQuery("");
   };
 
-  // Fetch notes from server with cancellation support for obsolete requests
+  // Fetch notes from server with cancellation support and stale response guard
   const loadNotes = useCallback(async (signal) => {
+    const currentGen = ++fetchGenerationRef.current;
     setIsLoading(true);
     setError(null);
 
@@ -91,16 +94,46 @@ export default function NotesPage() {
         offset,
         signal,
       });
-      setNotes(data.notes || []);
-      setTotal(data.total || 0);
+
+      // Ignore response if a newer fetch was initiated or request was aborted
+      if (fetchGenerationRef.current !== currentGen || signal?.aborted) {
+        return;
+      }
+
+      const rawList = Array.isArray(data.notes)
+        ? data.notes
+        : Array.isArray(data.items)
+        ? data.items
+        : [];
+      const totalCount =
+        typeof data.total === "number"
+          ? data.total
+          : offset + rawList.length;
+
+      // Recover gracefully from an invalid/outdated offset (e.g. notes deleted on later page)
+      if (offset > 0 && rawList.length === 0) {
+        const lastValidOffset = Math.max(
+          0,
+          Math.floor(Math.max(0, totalCount - 1) / PAGE_SIZE) * PAGE_SIZE
+        );
+        if (lastValidOffset !== offset) {
+          setOffset(lastValidOffset);
+          return;
+        }
+      }
+
+      setNotes(rawList);
+      setTotal(totalCount);
       setHasMore(Boolean(data.hasMore));
     } catch (err) {
-      if (err.name === "AbortError") {
+      if (fetchGenerationRef.current !== currentGen || signal?.aborted || err.name === "AbortError") {
         return;
       }
       setError(err?.message || "Could not load notes from server.");
     } finally {
-      setIsLoading(false);
+      if (fetchGenerationRef.current === currentGen && !signal?.aborted) {
+        setIsLoading(false);
+      }
     }
   }, [activeQuery, offset]);
 

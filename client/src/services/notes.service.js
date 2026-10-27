@@ -88,7 +88,23 @@ export async function fetchNotes({ q = '', limit = 20, offset = 0, signal } = {}
     );
   }
 
-  return data;
+  const rawList = Array.isArray(data.notes)
+    ? data.notes
+    : Array.isArray(data.items)
+    ? data.items
+    : [];
+  const normalizedTotal =
+    typeof data.total === 'number'
+      ? data.total
+      : (typeof data.offset === 'number' ? data.offset : offset) + rawList.length;
+
+  return {
+    ...data,
+    notes: rawList,
+    items: rawList,
+    total: normalizedTotal,
+    hasMore: Boolean(data.hasMore),
+  };
 }
 
 /**

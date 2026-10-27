@@ -6,7 +6,7 @@ import { normalizeEditorContent } from "../../constants/editor.js";
 
 /**
  * TiptapEditor component.
- * Integrates Tiptap rich-text editor with explicit-save support.
+ * Integrates Tiptap rich-text editor with explicit manual-save support.
  *
  * @param {object} props
  * @param {object} props.initialContent - Server note content JSON
@@ -48,10 +48,13 @@ export default function TiptapEditor({
     },
   });
 
-  // Notify parent of editor instance
+  // Notify parent of editor instance and cleanup on unmount
   useEffect(() => {
     if (editor && onEditorReady) {
       onEditorReady(editor);
+      return () => {
+        onEditorReady(null);
+      };
     }
   }, [editor, onEditorReady]);
 

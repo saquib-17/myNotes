@@ -42,18 +42,20 @@ Capture  ──►  Organize  ──►  Connect  ──►  Act  ──►  Rev
 
 ## Current Status
 
-> **Stage 5B Completed: Frontend Notes List, Rich-Text Editor & Explicit-Save Workflow**
+> **Stage 5 Core Notes Reliability Pass Completed: End-to-End Workflow & Visibility**
 >
-> Private notes listing, search, pagination, Tiptap rich-text editing, explicit saving, version conflict resolution, and unsaved changes protection are fully operational.
-> - **Notes List View (`/notes`):** Paginated notes cards with plain-text previews, timestamps, search by title and content text with literal matching, empty/error/loading states, and single-click "New note" action with duplicate click prevention.
-> - **Rich-Text Editor (`/notes/:noteId`):** Powered by Tiptap v3 with strict schema parity (doc, paragraph, headings 1-3, bullet & numbered lists, blockquote, code block, horizontal rule, and text marks bold, italic, strike, inline code). Unsupported extensions (link, underline) are explicitly disabled.
-> - **Explicit Save & Dirty Detection:** Clear status tracking (Saved vN, Unsaved changes, Saving..., Version conflict, Error). Compares current title/content against confirmed saved baseline, supporting undo back to pristine baseline. Editing is disabled while save is in flight.
-> - **Version Conflict Resolution (409):** Preserves local drafts without silent overwrites, offers "Copy local draft" with clipboard and textarea fallback, and provides confirmed "Discard and reload latest".
-> - **Unsaved Changes Protection:** Prevents accidental data loss on in-app link clicks (custom modal with Stay vs Discard), browser Back/Forward (popstate intercept), and tab close/refresh (beforeunload).
-> - **Soft-Deletion (Trash):** Action with confirmation modal, unsaved-changes warning, optimistic concurrency versioning, and navigation back to `/notes`.
-> - **Zero Vulnerabilities & 100% Free/Open-Source:** Compatible free Tiptap packages with 0 npm vulnerabilities and zero cloud/AI dependencies.
-> - **Autosave Policy:** Autosave is explicitly deferred/excluded from Stage 5B per scope boundaries.
-> - **Next Stage:** **Stage 5C — Editor Polish, Keyboard Shortcuts & End-to-End Verification**.
+> In response to a user-reported defect where saved notes failed to appear in the Notes section, a full end-to-end audit diagnosed and corrected a contract discrepancy between the backend listing endpoint (`items`) and frontend expectations (`data.notes`, `data.total`). The end-to-end create → edit → save → list → reopen workflow is now reliable, truthful, and verified.
+> - **Unified API & Client Contract:** Backend `GET /api/notes` now returns both `notes` and `items` as reciprocal aliases, along with an authoritative `total` count derived from a SQL `COUNT(*)` query. `notes.service.js` and `NotesPage.jsx` defensively handle either format.
+> - **Pure Explicit Manual Save:** Edits are persisted only upon intentional user action: clicking "Save note" or pressing `Ctrl+S` / `Cmd+S`. Autosave remains completely removed.
+> - **In-Flight Save Freeze:** While saving, the editor is set to read-only (`editable={false}`), input controls and formatting toolbar buttons are disabled, and the button indicates "Saving...". Interactivity is restored immediately upon server response.
+> - **Outdated Offset Recovery:** If an offset becomes invalid (e.g. after notes are deleted or a search reduces results), `NotesPage` gracefully recovers to the last valid page without an infinite loop.
+> - **Stale Response Protection:** Network request generations prevent out-of-order or aborted responses from overwriting newer search results or listing data.
+> - **Structural Baseline Comparison:** Key-order-agnostic recursive equality checker (`deepEqual`) prevents spurious dirty state changes.
+> - **Supported Router Navigation Guard (`useBlocker`):** React Router v7 Data Router navigation guard intercepts uncommitted navigation, offering explicit "Stay" vs "Discard changes and leave".
+> - **Shell Pre-Logout Coordination:** `AppLayout` queries active editor dirty state before calling `logout()`, prompting the user before session destruction.
+> - **Clean Trash Soft-Deletion:** Soft-deleting a note bypasses dirty-state warnings upon successful HTTP 204 and navigates cleanly back to `/notes`.
+> - **Verification Suite:** 93 client tests passing; 56 server tests passing; 0 ESLint errors/warnings; clean production build; 12 real API lifecycle checks passing.
+> - **Next Stage:** **Stage 6 — Note Organization and Recovery** (Collections, Tags, Pinning, Favorites, and Trash Restoration).
 
 ---
 

@@ -228,14 +228,23 @@ This document details the stage-by-stage implementation plan for MyNotes. Each s
     - Soft-deletion (Trash): confirmation modal with unsaved changes warning, optimistic concurrency versioning, and redirect to `/notes`.
     - Automated tests: 23 frontend unit/component tests in `client/src/test/notes.test.jsx`. All 76 client tests and 56 server tests pass cleanly.
     - Zero lint errors/warnings across frontend and backend; clean production build.
-    - Autosave policy: Autosave is explicitly not implemented / deferred per Stage 5B scope boundaries.
-  - **Stage 5C: Editor Polish, Shortcuts & End-to-End Verification (Pending).**
+  - **Stage 5 Core Notes Reliability Pass: End-to-End Workflow & List Visibility (Completed):**
+    - Root cause diagnosis: Discrepancy between GET `/api/notes` backend implementation (`items`) and frontend expectation (`data.notes`, `data.total`). `NotesPage.jsx` received `undefined` for `data.notes`, setting `notes = []` and `total = 0`, permanently rendering the empty state despite successful database writes.
+    - Contract unification: Server returns both `notes` and `items` as aliases, and includes true `total` from a SQL `COUNT(*)` query. `notes.service.js` and `NotesPage.jsx` defensively handle either property.
+    - Outdated offset recovery: If notes are deleted or a search reduces results such that `offset > 0` and the page is empty, `NotesPage` automatically resets offset to the last valid page without infinite loops.
+    - Stale response guard: Added `fetchGenerationRef` in `NotesPage` to ensure out-of-order or aborted network requests cannot overwrite newer results.
+    - Clean editor unmount: Added unmount cleanup to `TiptapEditor` (`onEditorReady(null)`), preventing dangling references to destroyed ProseMirror instances.
+    - Accessible navigation button: Added `aria-label="Back to notes"` to back navigation button.
+    - Automated tests: 40 component tests in `notes.test.jsx`, 31 layout tests, 22 auth tests (93 client tests total, 56 server tests total, all passing).
 - **Verification Approach:**
-  - Server test suite: `npm test` in `server/` (55 tests passing).
+  - Server test suite: `npm test` in `server/` (56 tests passing).
   - Server linter: `npm run lint` in `server/` (0 errors, 0 warnings).
-  - Controlled PostgreSQL integration check: `node test/integrationCheck.js` in `server/`.
-  - Frontend regressions: `npm test`, `npm run lint`, and `npm run build` in `client/`.
-- **Explicit Exclusions:** Collections, tags, favorites, pinned notes, attachments, version history snapshots, trash restore UI, permanent deletion.
+  - Controlled PostgreSQL integration check: `node test/integrationCheck.js` in `server/` (11 assertions passing).
+  - Real API verification: 12-step automated verification with real PostgreSQL and Express session/CSRF lifecycle passing cleanly with complete cleanup.
+  - Frontend test suite: `npm test` in `client/` (93 tests passing across 3 files with `--no-file-parallelism`).
+  - Frontend linter: `npm run lint` in `client/` (0 errors, 0 warnings).
+  - Production build: `npm run build` in `client/` (successful build in ~6.3s).
+- **Explicit Exclusions:** Collections, tags, favorites, pinned notes, attachments, version history snapshots, trash restore UI, permanent deletion. Offline persistent storage (in-memory draft persistence only).
 
 ---
 

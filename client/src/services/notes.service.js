@@ -15,6 +15,8 @@ const TAGS_API_BASE = '/api/tags';
 const TASKS_API_BASE = '/api/tasks';
 const QUESTIONS_API_BASE = '/api/questions';
 const DOCUMENTS_API_BASE = '/api/documents';
+const REVISION_API_BASE = '/api/revision-items';
+const DOUBTS_API_BASE = '/api/doubts';
 
 export const NOTE_LIMITS = {
   MAX_TITLE_LENGTH: 200,
@@ -52,6 +54,21 @@ export const DOCUMENT_LIMITS = {
   MAX_DESCRIPTION_LENGTH: 2000,
   MAX_TOPIC_LENGTH: 80,
   ALLOWED_CATEGORIES: ['pdf', 'article', 'documentation', 'course', 'video', 'repository', 'other'],
+};
+
+export const REVISION_ITEM_LIMITS = {
+  MAX_TITLE_LENGTH: 200,
+  MAX_DETAILS_LENGTH: 5000,
+  MAX_SUBJECT_LENGTH: 80,
+  ALLOWED_STATUSES: ['pending', 'revised'],
+};
+
+export const DOUBT_LIMITS = {
+  MAX_QUESTION_LENGTH: 1000,
+  MAX_DETAILS_LENGTH: 5000,
+  MAX_RESOLUTION_LENGTH: 5000,
+  MAX_SUBJECT_LENGTH: 80,
+  ALLOWED_STATUSES: ['open', 'resolved'],
 };
 
 /**
@@ -2079,6 +2096,661 @@ export async function deleteDocument(id, { csrfToken } = {}) {
     }
     throw new ApiError(
       data?.message || `Failed to delete document (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return true;
+}
+
+/**
+ * Validates a revision item on the client before submission.
+ */
+export function validateClientRevisionItem({ title, details, subject, status }) {
+  if (title !== undefined) {
+    if (typeof title !== 'string' || title.trim().length === 0) {
+      throw new Error('Revision item title cannot be empty.');
+    }
+    if (title.trim().length > REVISION_ITEM_LIMITS.MAX_TITLE_LENGTH) {
+      throw new Error(
+        `Revision item title cannot exceed ${REVISION_ITEM_LIMITS.MAX_TITLE_LENGTH} characters.`
+      );
+    }
+  }
+
+  if (details !== undefined && details !== null && details.trim().length > 0) {
+    if (details.trim().length > REVISION_ITEM_LIMITS.MAX_DETAILS_LENGTH) {
+      throw new Error(
+        `Details cannot exceed ${REVISION_ITEM_LIMITS.MAX_DETAILS_LENGTH} characters.`
+      );
+    }
+  }
+
+  if (subject !== undefined && subject !== null && subject.trim().length > 0) {
+    if (subject.trim().length > REVISION_ITEM_LIMITS.MAX_SUBJECT_LENGTH) {
+      throw new Error(
+        `Subject cannot exceed ${REVISION_ITEM_LIMITS.MAX_SUBJECT_LENGTH} characters.`
+      );
+    }
+  }
+
+  if (status !== undefined && status !== null) {
+    if (!REVISION_ITEM_LIMITS.ALLOWED_STATUSES.includes(status.toLowerCase().trim())) {
+      throw new Error(
+        `Status must be one of: ${REVISION_ITEM_LIMITS.ALLOWED_STATUSES.join(', ')}.`
+      );
+    }
+  }
+}
+
+/**
+ * Validates a doubt on the client before submission.
+ */
+export function validateClientDoubt({ question, details, resolution, subject, status }) {
+  if (question !== undefined) {
+    if (typeof question !== 'string' || question.trim().length === 0) {
+      throw new Error('Doubt question cannot be empty.');
+    }
+    if (question.trim().length > DOUBT_LIMITS.MAX_QUESTION_LENGTH) {
+      throw new Error(
+        `Doubt question cannot exceed ${DOUBT_LIMITS.MAX_QUESTION_LENGTH} characters.`
+      );
+    }
+  }
+
+  if (details !== undefined && details !== null && details.trim().length > 0) {
+    if (details.trim().length > DOUBT_LIMITS.MAX_DETAILS_LENGTH) {
+      throw new Error(
+        `Details cannot exceed ${DOUBT_LIMITS.MAX_DETAILS_LENGTH} characters.`
+      );
+    }
+  }
+
+  if (resolution !== undefined && resolution !== null && resolution.trim().length > 0) {
+    if (resolution.trim().length > DOUBT_LIMITS.MAX_RESOLUTION_LENGTH) {
+      throw new Error(
+        `Resolution cannot exceed ${DOUBT_LIMITS.MAX_RESOLUTION_LENGTH} characters.`
+      );
+    }
+  }
+
+  if (subject !== undefined && subject !== null && subject.trim().length > 0) {
+    if (subject.trim().length > DOUBT_LIMITS.MAX_SUBJECT_LENGTH) {
+      throw new Error(
+        `Subject cannot exceed ${DOUBT_LIMITS.MAX_SUBJECT_LENGTH} characters.`
+      );
+    }
+  }
+
+  if (status !== undefined && status !== null) {
+    if (!DOUBT_LIMITS.ALLOWED_STATUSES.includes(status.toLowerCase().trim())) {
+      throw new Error(
+        `Status must be one of: ${DOUBT_LIMITS.ALLOWED_STATUSES.join(', ')}.`
+      );
+    }
+  }
+}
+
+/**
+ * Fetches revision items with optional status, subject, q search, and pagination.
+ */
+export async function fetchRevisionItems({
+  status,
+  subject,
+  q = '',
+  limit = 20,
+  offset = 0,
+  signal,
+} = {}) {
+  const params = new URLSearchParams();
+  if (status && status !== 'all') params.set('status', status);
+  if (subject && subject.trim()) params.set('subject', subject.trim());
+  if (q && q.trim()) params.set('q', q.trim());
+  params.set('limit', String(limit));
+  params.set('offset', String(offset));
+
+  const response = await fetch(`${REVISION_API_BASE}?${params.toString()}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to fetch revision items (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  const rawList = Array.isArray(data.revisionItems)
+    ? data.revisionItems
+    : Array.isArray(data.items)
+    ? data.items
+    : [];
+
+  const normalizedTotal =
+    typeof data.total === 'number'
+      ? data.total
+      : (typeof data.offset === 'number' ? data.offset : offset) + rawList.length;
+
+  return {
+    revisionItems: rawList,
+    items: rawList,
+    total: normalizedTotal,
+    limit: data.limit ?? limit,
+    offset: data.offset ?? offset,
+    hasMore: Boolean(data.hasMore),
+  };
+}
+
+/**
+ * Fetches a single revision item by ID.
+ */
+export async function fetchRevisionItemById(id, { signal } = {}) {
+  const response = await fetch(`${REVISION_API_BASE}/${id}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to fetch revision item (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Creates a new revision item.
+ */
+export async function createRevisionItem({
+  title,
+  details = null,
+  subject = null,
+  status = 'pending',
+  csrfToken,
+}) {
+  validateClientRevisionItem({ title, details, subject, status });
+
+  const headers = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  };
+
+  if (csrfToken) {
+    headers['X-Csrf-Token'] = csrfToken;
+  }
+
+  const payload = {
+    title: title.trim(),
+    details: details && details.trim().length > 0 ? details.trim() : null,
+    subject: subject && subject.trim().length > 0 ? subject.trim() : null,
+    status: status ? status.toLowerCase().trim() : 'pending',
+  };
+
+  const response = await fetch(REVISION_API_BASE, {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to create revision item (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Updates an existing revision item.
+ */
+export async function updateRevisionItem(
+  id,
+  {
+    title,
+    details,
+    subject,
+    status,
+    csrfToken,
+  } = {}
+) {
+  validateClientRevisionItem({ title, details, subject, status });
+
+  const headers = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  };
+
+  if (csrfToken) {
+    headers['X-Csrf-Token'] = csrfToken;
+  }
+
+  const payload = {};
+  if (title !== undefined) payload.title = title.trim();
+  if (details !== undefined) {
+    payload.details = details && details.trim().length > 0 ? details.trim() : null;
+  }
+  if (subject !== undefined) {
+    payload.subject = subject && subject.trim().length > 0 ? subject.trim() : null;
+  }
+  if (status !== undefined) payload.status = status.toLowerCase().trim();
+
+  const response = await fetch(`${REVISION_API_BASE}/${id}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to update revision item (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Marks a revision item as revised.
+ */
+export async function markRevisionItemRevised(id, { csrfToken } = {}) {
+  const headers = {
+    Accept: 'application/json',
+  };
+
+  if (csrfToken) {
+    headers['X-Csrf-Token'] = csrfToken;
+  }
+
+  const response = await fetch(`${REVISION_API_BASE}/${id}/revise`, {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to mark revision item as revised (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Reopens a revision item (sets status to pending).
+ */
+export async function reopenRevisionItem(id, { csrfToken } = {}) {
+  const headers = {
+    Accept: 'application/json',
+  };
+
+  if (csrfToken) {
+    headers['X-Csrf-Token'] = csrfToken;
+  }
+
+  const response = await fetch(`${REVISION_API_BASE}/${id}/reopen`, {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to reopen revision item (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Soft deletes a revision item.
+ */
+export async function deleteRevisionItem(id, { csrfToken } = {}) {
+  const headers = {};
+
+  if (csrfToken) {
+    headers['X-Csrf-Token'] = csrfToken;
+  }
+
+  const response = await fetch(`${REVISION_API_BASE}/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers,
+  });
+
+  if (!response.ok) {
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+    throw new ApiError(
+      data?.message || `Failed to delete revision item (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return true;
+}
+
+/**
+ * Fetches doubts with optional status, subject, q search, and pagination.
+ */
+export async function fetchDoubts({
+  status,
+  subject,
+  q = '',
+  limit = 20,
+  offset = 0,
+  signal,
+} = {}) {
+  const params = new URLSearchParams();
+  if (status && status !== 'all') params.set('status', status);
+  if (subject && subject.trim()) params.set('subject', subject.trim());
+  if (q && q.trim()) params.set('q', q.trim());
+  params.set('limit', String(limit));
+  params.set('offset', String(offset));
+
+  const response = await fetch(`${DOUBTS_API_BASE}?${params.toString()}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to fetch doubts (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  const rawList = Array.isArray(data.doubts)
+    ? data.doubts
+    : Array.isArray(data.items)
+    ? data.items
+    : [];
+
+  const normalizedTotal =
+    typeof data.total === 'number'
+      ? data.total
+      : (typeof data.offset === 'number' ? data.offset : offset) + rawList.length;
+
+  return {
+    doubts: rawList,
+    items: rawList,
+    total: normalizedTotal,
+    limit: data.limit ?? limit,
+    offset: data.offset ?? offset,
+    hasMore: Boolean(data.hasMore),
+  };
+}
+
+/**
+ * Fetches a single doubt by ID.
+ */
+export async function fetchDoubtById(id, { signal } = {}) {
+  const response = await fetch(`${DOUBTS_API_BASE}/${id}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to fetch doubt (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Creates a new doubt.
+ */
+export async function createDoubt({
+  question,
+  details = null,
+  subject = null,
+  status = 'open',
+  resolution = null,
+  csrfToken,
+}) {
+  validateClientDoubt({ question, details, resolution, subject, status });
+
+  const headers = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  };
+
+  if (csrfToken) {
+    headers['X-Csrf-Token'] = csrfToken;
+  }
+
+  const payload = {
+    question: question.trim(),
+    details: details && details.trim().length > 0 ? details.trim() : null,
+    subject: subject && subject.trim().length > 0 ? subject.trim() : null,
+    status: status ? status.toLowerCase().trim() : 'open',
+    resolution: resolution && resolution.trim().length > 0 ? resolution.trim() : null,
+  };
+
+  const response = await fetch(DOUBTS_API_BASE, {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to create doubt (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Updates an existing doubt.
+ */
+export async function updateDoubt(
+  id,
+  {
+    question,
+    details,
+    subject,
+    status,
+    resolution,
+    csrfToken,
+  } = {}
+) {
+  validateClientDoubt({ question, details, resolution, subject, status });
+
+  const headers = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  };
+
+  if (csrfToken) {
+    headers['X-Csrf-Token'] = csrfToken;
+  }
+
+  const payload = {};
+  if (question !== undefined) payload.question = question.trim();
+  if (details !== undefined) {
+    payload.details = details && details.trim().length > 0 ? details.trim() : null;
+  }
+  if (subject !== undefined) {
+    payload.subject = subject && subject.trim().length > 0 ? subject.trim() : null;
+  }
+  if (status !== undefined) payload.status = status.toLowerCase().trim();
+  if (resolution !== undefined) {
+    payload.resolution = resolution && resolution.trim().length > 0 ? resolution.trim() : null;
+  }
+
+  const response = await fetch(`${DOUBTS_API_BASE}/${id}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to update doubt (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Resolves a doubt, optionally recording resolution notes.
+ */
+export async function resolveDoubt(id, { resolution, csrfToken } = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  };
+
+  if (csrfToken) {
+    headers['X-Csrf-Token'] = csrfToken;
+  }
+
+  const payload = {};
+  if (resolution !== undefined && resolution !== null && resolution.trim().length > 0) {
+    payload.resolution = resolution.trim();
+  }
+
+  const response = await fetch(`${DOUBTS_API_BASE}/${id}/resolve`, {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to resolve doubt (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Reopens a doubt.
+ */
+export async function reopenDoubt(id, { csrfToken } = {}) {
+  const headers = {
+    Accept: 'application/json',
+  };
+
+  if (csrfToken) {
+    headers['X-Csrf-Token'] = csrfToken;
+  }
+
+  const response = await fetch(`${DOUBTS_API_BASE}/${id}/reopen`, {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to reopen doubt (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Soft deletes a doubt.
+ */
+export async function deleteDoubt(id, { csrfToken } = {}) {
+  const headers = {};
+
+  if (csrfToken) {
+    headers['X-Csrf-Token'] = csrfToken;
+  }
+
+  const response = await fetch(`${DOUBTS_API_BASE}/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers,
+  });
+
+  if (!response.ok) {
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+    throw new ApiError(
+      data?.message || `Failed to delete doubt (HTTP ${response.status})`,
       response.status,
       data?.code || data?.error
     );

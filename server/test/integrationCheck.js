@@ -52,6 +52,22 @@ import {
   setDocumentFavorite,
   softDeleteDocument,
 } from '../src/documents/documentRepository.js';
+import {
+  createRevisionItem,
+  findRevisionItemsByUserId,
+  findRevisionItemByIdAndUserId,
+  updateRevisionItem,
+  setRevisionItemStatus,
+  softDeleteRevisionItem,
+} from '../src/revision/revisionItemRepository.js';
+import {
+  createDoubt,
+  findDoubtsByUserId,
+  findDoubtByIdAndUserId,
+  updateDoubt,
+  setDoubtStatus,
+  softDeleteDoubt,
+} from '../src/doubts/doubtRepository.js';
 import { derivePlainText, validateContent } from '../src/notes/contentValidator.js';
 
 async function runControlledIntegrationCheck() {
@@ -65,6 +81,8 @@ async function runControlledIntegrationCheck() {
   const createdTaskIds = [];
   const createdQuestionIds = [];
   const createdDocumentIds = [];
+  const createdRevisionItemIds = [];
+  const createdDoubtIds = [];
 
   try {
     // 1. Verify connected database identity
@@ -77,7 +95,7 @@ async function runControlledIntegrationCheck() {
     const tablesCheck = await pool.query(`
       SELECT table_name
       FROM information_schema.tables
-      WHERE table_schema = 'public' AND table_name IN ('users', 'session', 'notes', 'collections', 'tags', 'note_tags', 'tasks', 'questions', 'documents', 'app_metadata')
+      WHERE table_schema = 'public' AND table_name IN ('users', 'session', 'notes', 'collections', 'tags', 'note_tags', 'tasks', 'questions', 'documents', 'revision_items', 'doubts', 'app_metadata')
       ORDER BY table_name;
     `);
     const tableNames = tablesCheck.rows.map((r) => r.table_name);
@@ -89,6 +107,8 @@ async function runControlledIntegrationCheck() {
     assert.ok(tableNames.includes('tasks'), 'Table "tasks" must exist');
     assert.ok(tableNames.includes('questions'), 'Table "questions" must exist');
     assert.ok(tableNames.includes('documents'), 'Table "documents" must exist');
+    assert.ok(tableNames.includes('revision_items'), 'Table "revision_items" must exist');
+    assert.ok(tableNames.includes('doubts'), 'Table "doubts" must exist');
     assert.ok(tableNames.includes('users'), 'Table "users" must exist');
 
     // 3. Create two isolated temporary user accounts directly in the database
@@ -641,6 +661,132 @@ async function runControlledIntegrationCheck() {
     assert.strictEqual(directDocAfterDel, null, 'Soft-deleted document must return null from findDocumentByIdAndUserId');
     console.log('[Integration Check] Verified document lifecycle: create -> list/filter -> favorite -> edit -> unfavorite -> soft-delete -> verify exclusion.');
 
+    // 10.12 Test Revision Item lifecycle (create -> mark revised -> verify revised_at -> reopen -> verify revised_at cleared -> edit -> soft-delete -> verify exclusion)
+    const createdRevItem = await createRevisionItem({
+      userId: userA.id,
+      title: 'B-Tree Index Balancing',
+      details: 'Splitting and merging nodes on insertion/deletion',
+      subject: 'Databases',
+      pool,
+    });
+    createdRevisionItemIds.push(createdRevItem.id);
+    assert.strictEqual(createdRevItem.title, 'B-Tree Index Balancing');
+    assert.strictEqual(createdRevItem.status, 'pending');
+    assert.strictEqual(createdRevItem.revisedAt, null);
+
+    // Mark revised
+    const revisedItem = await setRevisionItemStatus({
+      id: createdRevItem.id,
+      userId: userA.id,
+      status: 'revised',
+      pool,
+    });
+    assert.strictEqual(revisedItem.status, 'revised');
+    assert.ok(revisedItem.revisedAt, 'revisedAt must be set on status=revised');
+
+    // Reopen
+    const reopenedItem = await setRevisionItemStatus({
+      id: createdRevItem.id,
+      userId: userA.id,
+      status: 'pending',
+      pool,
+    });
+    assert.strictEqual(reopenedItem.status, 'pending');
+    assert.strictEqual(reopenedItem.revisedAt, null, 'revisedAt must be null on reopen');
+
+    // Edit
+    const editedRevItem = await updateRevisionItem({
+      id: createdRevItem.id,
+      userId: userA.id,
+      title: 'B+ Tree Index Balancing',
+      subject: 'Advanced Databases',
+      pool,
+    });
+    assert.strictEqual(editedRevItem.title, 'B+ Tree Index Balancing');
+    assert.strictEqual(editedRevItem.subject, 'Advanced Databases');
+
+    // Soft delete
+    const softDelRev = await softDeleteRevisionItem({ id: createdRevItem.id, userId: userA.id, pool });
+    assert.strictEqual(softDelRev, true);
+
+    // Verify exclusion
+    const revListAfterDel = await findRevisionItemsByUserId({ userId: userA.id, pool });
+    assert.strictEqual(
+      revListAfterDel.revisionItems.some((r) => r.id === createdRevItem.id),
+      false,
+      'Soft-deleted revision item must not appear in active list'
+    );
+    const directRevAfterDel = await findRevisionItemByIdAndUserId({ id: createdRevItem.id, userId: userA.id, pool });
+    assert.strictEqual(directRevAfterDel, null, 'Soft-deleted revision item must return null');
+    console.log('[Integration Check] Verified revision item lifecycle: create -> mark revised -> verify revised_at -> reopen -> verify revised_at cleared -> edit -> soft-delete -> verify exclusion.');
+
+    // 10.13 Test Doubt lifecycle (create -> resolve with resolution -> verify resolved_at -> reopen -> verify resolved_at cleared and resolution preserved -> soft-delete -> verify exclusion)
+    const createdDoubt = await createDoubt({
+      userId: userA.id,
+      question: 'Why does TCP TIME_WAIT state last 2MSL?',
+      details: 'To ensure delayed duplicate segments expire in the network.',
+      subject: 'Networking',
+      pool,
+    });
+    createdDoubtIds.push(createdDoubt.id);
+    assert.strictEqual(createdDoubt.question, 'Why does TCP TIME_WAIT state last 2MSL?');
+    assert.strictEqual(createdDoubt.status, 'open');
+    assert.strictEqual(createdDoubt.resolvedAt, null);
+
+    // Resolve with resolution
+    const resolvedDoubt = await setDoubtStatus({
+      id: createdDoubt.id,
+      userId: userA.id,
+      status: 'resolved',
+      resolution: 'Allows old duplicates to die out and gives time for final ACK retransmission.',
+      pool,
+    });
+    assert.strictEqual(resolvedDoubt.status, 'resolved');
+    assert.ok(resolvedDoubt.resolvedAt, 'resolvedAt must be set on status=resolved');
+    assert.strictEqual(
+      resolvedDoubt.resolution,
+      'Allows old duplicates to die out and gives time for final ACK retransmission.'
+    );
+
+    // Reopen (preserves resolution notes while clearing resolvedAt)
+    const reopenedDoubt = await setDoubtStatus({
+      id: createdDoubt.id,
+      userId: userA.id,
+      status: 'open',
+      pool,
+    });
+    assert.strictEqual(reopenedDoubt.status, 'open');
+    assert.strictEqual(reopenedDoubt.resolvedAt, null, 'resolvedAt must be cleared on reopen');
+    assert.strictEqual(
+      reopenedDoubt.resolution,
+      'Allows old duplicates to die out and gives time for final ACK retransmission.',
+      'Existing resolution must be preserved upon reopen'
+    );
+
+    // Edit doubt
+    const editedDoubt = await updateDoubt({
+      id: createdDoubt.id,
+      userId: userA.id,
+      subject: 'Advanced Networking Protocols',
+      pool,
+    });
+    assert.strictEqual(editedDoubt.subject, 'Advanced Networking Protocols');
+
+    // Soft delete
+    const softDelDoubt = await softDeleteDoubt({ id: createdDoubt.id, userId: userA.id, pool });
+    assert.strictEqual(softDelDoubt, true);
+
+    // Verify exclusion
+    const doubtListAfterDel = await findDoubtsByUserId({ userId: userA.id, pool });
+    assert.strictEqual(
+      doubtListAfterDel.doubts.some((d) => d.id === createdDoubt.id),
+      false,
+      'Soft-deleted doubt must not appear in active list'
+    );
+    const directDoubtAfterDel = await findDoubtByIdAndUserId({ id: createdDoubt.id, userId: userA.id, pool });
+    assert.strictEqual(directDoubtAfterDel, null, 'Soft-deleted doubt must return null');
+    console.log('[Integration Check] Verified doubt lifecycle: create -> resolve with resolution -> verify resolved_at -> reopen -> verify resolved_at cleared and resolution preserved -> soft-delete -> verify exclusion.');
+
     // 11. Verify Foreign Key ON DELETE RESTRICT policy
     let deleteUserBlocked = false;
     try {
@@ -676,6 +822,12 @@ async function runControlledIntegrationCheck() {
     }
     if (createdDocumentIds.length > 0) {
       await pool.query('DELETE FROM documents WHERE id = ANY($1)', [createdDocumentIds]);
+    }
+    if (createdRevisionItemIds.length > 0) {
+      await pool.query('DELETE FROM revision_items WHERE id = ANY($1)', [createdRevisionItemIds]);
+    }
+    if (createdDoubtIds.length > 0) {
+      await pool.query('DELETE FROM doubts WHERE id = ANY($1)', [createdDoubtIds]);
     }
     if (createdUserIds.length > 0) {
       await pool.query('DELETE FROM users WHERE id = ANY($1)', [createdUserIds]);

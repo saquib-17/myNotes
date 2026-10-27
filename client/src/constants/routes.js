@@ -109,7 +109,7 @@ export const NAV_GROUPS = [
       },
       {
         to: "/revision",
-        label: "Revision",
+        label: "Revision & Doubts",
         description: "Review and reinforce knowledge using spaced repetition cycles.",
       },
       {
@@ -139,6 +139,9 @@ export function getRouteMetadata(pathname) {
   }
   if (pathname === "/trash") {
     return { title: "Trash", description: "View and restore soft-deleted notes." };
+  }
+  if (pathname === "/revision") {
+    return { title: "Revision", description: "Review and reinforce knowledge using spaced repetition cycles." };
   }
   for (const group of NAV_GROUPS) {
     const item = group.items.find((i) => i.to === pathname);

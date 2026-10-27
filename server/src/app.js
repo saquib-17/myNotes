@@ -11,6 +11,8 @@ import tagsRoutes from './routes/tags.routes.js';
 import tasksRoutes from './routes/tasks.routes.js';
 import questionsRoutes from './routes/questions.routes.js';
 import documentsRoutes from './routes/documents.routes.js';
+import revisionItemsRoutes from './routes/revisionItems.routes.js';
+import doubtsRoutes from './routes/doubts.routes.js';
 import { getSessionOptions } from './config/session.config.js';
 import { getSessionStore } from './auth/sessionStore.js';
 
@@ -42,6 +44,8 @@ function getDefaultSessionMiddleware() {
  * @param {import('express').Router} [options.tasksRouter] - Injected tasks router
  * @param {import('express').Router} [options.questionsRouter] - Injected questions router
  * @param {import('express').Router} [options.documentsRouter] - Injected documents router
+ * @param {import('express').Router} [options.revisionItemsRouter] - Injected revision items router
+ * @param {import('express').Router} [options.doubtsRouter] - Injected doubts router
  * @returns {express.Express}
  */
 export function createApp({
@@ -54,6 +58,8 @@ export function createApp({
   tasksRouter,
   questionsRouter,
   documentsRouter,
+  revisionItemsRouter,
+  doubtsRouter,
 } = {}) {
   const app = express();
 
@@ -99,6 +105,8 @@ export function createApp({
     app.use('/api/tasks', resolvedSessionMiddleware, tasksRouter || tasksRoutes);
     app.use('/api/questions', resolvedSessionMiddleware, questionsRouter || questionsRoutes);
     app.use('/api/documents', resolvedSessionMiddleware, documentsRouter || documentsRoutes);
+    app.use('/api/revision-items', resolvedSessionMiddleware, revisionItemsRouter || revisionItemsRoutes);
+    app.use('/api/doubts', resolvedSessionMiddleware, doubtsRouter || doubtsRoutes);
   } else {
     app.use('/api/auth', authRouter || authRoutes);
     app.use('/api/notes', notesRouter || notesRoutes);
@@ -107,6 +115,8 @@ export function createApp({
     app.use('/api/tasks', tasksRouter || tasksRoutes);
     app.use('/api/questions', questionsRouter || questionsRoutes);
     app.use('/api/documents', documentsRouter || documentsRoutes);
+    app.use('/api/revision-items', revisionItemsRouter || revisionItemsRoutes);
+    app.use('/api/doubts', doubtsRouter || doubtsRoutes);
   }
 
   // Fallback for unknown API routes - returns structured JSON 404

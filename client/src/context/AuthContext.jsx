@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { AuthContext } from "./authContextDef.js";
 import {
   fetchCsrfToken,
@@ -117,6 +117,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
+    getCsrfToken: ensureCsrfToken,
   };
 
   return (

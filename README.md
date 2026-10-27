@@ -42,18 +42,18 @@ Capture  ──►  Organize  ──►  Connect  ──►  Act  ──►  Rev
 
 ## Current Status
 
-> **Stage 5A Completed: Private Notes Schema, REST API & Backend Verification**
+> **Stage 5B Completed: Frontend Notes List, Rich-Text Editor & Explicit-Save Workflow**
 >
-> Secure, ownership-scoped notes REST API, rich-text schema validation, and optimistic concurrency are fully operational.
-> - **Database Schema:** `notes` table with UUID primary key, `user_id` foreign key (`ON DELETE RESTRICT`), `title`, `content_json` (JSONB), `content_text` (TEXT), `version` (positive integer), `deleted_at` (soft delete), and partial composite index for active user note queries.
-> - **Rich-Text Validation:** Strict ProseMirror/Tiptap node & mark whitelist (`doc`, `paragraph`, `heading` levels 1-3, `bulletList`, `orderedList`, `listItem`, `blockquote`, `codeBlock`, `hardBreak`, `horizontalRule`, and `text` with `bold`, `italic`, `strike`, `code`). Enforces limits: 200 char title, 256 KiB content, max depth 20, max 5,000 nodes.
-> - **Derived Plain Text & Previews:** Automatically extracts plain text for search indexing and generates single-line bounded previews.
-> - **Search Semantics:** Case-insensitive search across title and content text with literal SQL wildcard (`%`, `_`, `\`) escaping.
-> - **Optimistic Concurrency:** Atomic version increments (`version + 1`) with `expectedVersion` check returning `409 Conflict` (`NOTE_VERSION_CONFLICT`) upon stale edits.
-> - **Soft Deletion:** `POST /api/notes/:id/trash` soft-deletes notes with version tracking; excluded from active queries.
-> - **Security:** Protected by `requireAuth`, `requireCsrf`, strict Origin checks, and `Cache-Control: no-store`.
-> - **Endpoints:** `POST /api/notes`, `GET /api/notes`, `GET /api/notes/:id`, `PATCH /api/notes/:id`, `POST /api/notes/:id/trash`.
-> - **Next Stage:** **Stage 5B — Frontend Rich-Text Editor & Core Notes UI** (Tiptap integration, autosave, note listing).
+> Private notes listing, search, pagination, Tiptap rich-text editing, explicit saving, version conflict resolution, and unsaved changes protection are fully operational.
+> - **Notes List View (`/notes`):** Paginated notes cards with plain-text previews, timestamps, search by title and content text with literal matching, empty/error/loading states, and single-click "New note" action with duplicate click prevention.
+> - **Rich-Text Editor (`/notes/:noteId`):** Powered by Tiptap v3 with strict schema parity (doc, paragraph, headings 1-3, bullet & numbered lists, blockquote, code block, horizontal rule, and text marks bold, italic, strike, inline code). Unsupported extensions (link, underline) are explicitly disabled.
+> - **Explicit Save & Dirty Detection:** Clear status tracking (Saved vN, Unsaved changes, Saving..., Version conflict, Error). Compares current title/content against confirmed saved baseline, supporting undo back to pristine baseline. Editing is disabled while save is in flight.
+> - **Version Conflict Resolution (409):** Preserves local drafts without silent overwrites, offers "Copy local draft" with clipboard and textarea fallback, and provides confirmed "Discard and reload latest".
+> - **Unsaved Changes Protection:** Prevents accidental data loss on in-app link clicks (custom modal with Stay vs Discard), browser Back/Forward (popstate intercept), and tab close/refresh (beforeunload).
+> - **Soft-Deletion (Trash):** Action with confirmation modal, unsaved-changes warning, optimistic concurrency versioning, and navigation back to `/notes`.
+> - **Zero Vulnerabilities & 100% Free/Open-Source:** Compatible free Tiptap packages with 0 npm vulnerabilities and zero cloud/AI dependencies.
+> - **Autosave Policy:** Autosave is explicitly deferred/excluded from Stage 5B per scope boundaries.
+> - **Next Stage:** **Stage 5C — Editor Polish, Keyboard Shortcuts & End-to-End Verification**.
 
 ---
 

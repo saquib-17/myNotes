@@ -135,6 +135,31 @@ describe('Content Validator & Derived Plain Text Unit Tests', () => {
     assert.ok(plain.includes('const answer = 42;'));
   });
 
+  it('validates Tiptap default attributes (orderedList type: null, codeBlock language: null)', () => {
+    const tiptapDoc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'orderedList',
+          attrs: { start: 1, type: null },
+          content: [
+            {
+              type: 'listItem',
+              content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Item' }] }],
+            },
+          ],
+        },
+        {
+          type: 'codeBlock',
+          attrs: { language: null },
+          content: [{ type: 'text', text: 'plain code' }],
+        },
+      ],
+    };
+
+    assert.doesNotThrow(() => validateContent(tiptapDoc));
+  });
+
   it('rejects unsupported node types like images, tables, or scripts', () => {
     const invalidNodes = [
       { type: 'doc', content: [{ type: 'image', attrs: { src: 'https://evil.com/x.png' } }] },

@@ -1,22 +1,370 @@
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/useAuth.js";
+import { fetchNotes, createNote } from "../services/notes.service.js";
+import { CANONICAL_EMPTY_DOC } from "../constants/editor.js";
+import LoadingState from "../components/LoadingState.jsx";
+import ErrorState from "../components/ErrorState.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 
+const PAGE_SIZE = 20;
+
 /**
- * NotesPage - Placeholder view for personal notes and documentation.
- * Stage 4 foundation view; CRUD implementation scheduled for Stage 5.
+ * Formats an ISO date string into a user-friendly relative or local timestamp.
+ *
+ * @param {string} isoString
+ * @returns {string}
+ */
+function formatTimestamp(isoString) {
+  if (!isoString) return "";
+  try {
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return "";
+    return new Intl.DateTimeFormat(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(date);
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * NotesPage - Main notes listing view with server-side search and pagination.
  */
 export default function NotesPage() {
+  const { getCsrfToken } = useAuth();
+  const navigate = useNavigate();
+
+  const [notes, setNotes] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+
+  const [searchInput, setSearchInput] = useState("");
+  const [activeQuery, setActiveQuery] = useState("");
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState(null);
+
+  // Debounce search input by 300ms
+  const searchTimeoutRef = useRef(null);
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearchInput(val);
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      setOffset(0);
+      setActiveQuery(val.trim());
+    }, 300);
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput("");
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    setOffset(0);
+    setActiveQuery("");
+  };
+
+  // Fetch notes from server with cancellation support for obsolete requests
+  const loadNotes = useCallback(async (signal) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const data = await fetchNotes({
+        q: activeQuery,
+        limit: PAGE_SIZE,
+        offset,
+        signal,
+      });
+      setNotes(data.notes || []);
+      setTotal(data.total || 0);
+      setHasMore(Boolean(data.hasMore));
+    } catch (err) {
+      if (err.name === "AbortError") {
+        return;
+      }
+      setError(err?.message || "Could not load notes from server.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeQuery, offset]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    loadNotes(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
+  }, [loadNotes]);
+
+  // Clean up debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Explicit New Note creation workflow
+  const handleCreateNote = async () => {
+    if (isCreating) return;
+
+    setIsCreating(true);
+    setCreateError(null);
+
+    try {
+      const csrfToken = await getCsrfToken();
+      const newNote = await createNote({
+        title: "Untitled note",
+        content: CANONICAL_EMPTY_DOC,
+        csrfToken,
+      });
+
+      // Navigate to the newly created note editor
+      navigate(`/notes/${newNote.id}`);
+    } catch (err) {
+      setCreateError(
+        err?.message || "Could not confirm note creation with the server. Please check your connection."
+      );
+      setIsCreating(false);
+    }
+  };
+
+  const currentStart = total === 0 ? 0 : offset + 1;
+  const currentEnd = Math.min(offset + PAGE_SIZE, total);
+
   return (
-    <div className="space-y-6">
-      <EmptyState
-        title="No notes yet"
-        description="Your notes and documentation will live here."
-        note="Note creation will be implemented in the next notes stage."
-        icon={
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+    <div className="space-y-6 max-w-5xl mx-auto">
+      {/* Top Actions & Description */}
+      <div className="flex items-center justify-between gap-4 pb-1">
+        <div className="text-sm text-stone-500">
+          <span>Your notes and documentation will live here.</span>
+        </div>
+
+        <div>
+          <button
+            type="button"
+            disabled={isCreating}
+            onClick={handleCreateNote}
+            className={`inline-flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-teal-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 ${
+              isCreating ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
+            }`}
+          >
+            <svg
+              className={`h-4 w-4 ${isCreating ? "animate-spin" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              {isCreating ? (
+                <>
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </>
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              )}
+            </svg>
+            <span>{isCreating ? "Creating..." : "New note"}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Ambiguous Creation Failure Feedback */}
+      {createError && (
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 flex items-start justify-between gap-3"
+        >
+          <div className="flex items-start gap-2.5">
+            <svg
+              className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <div>
+              <p className="font-semibold">Creation could not be confirmed</p>
+              <p className="mt-0.5 text-red-700">{createError}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCreateError(null)}
+            className="text-xs font-semibold text-red-700 hover:text-red-900 underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Search Input Bar */}
+      <div className="relative">
+        <label htmlFor="notes-search" className="sr-only">
+          Search notes by title or content
+        </label>
+        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-stone-400">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
           </svg>
-        }
-      />
+        </div>
+        <input
+          id="notes-search"
+          type="search"
+          value={searchInput}
+          onChange={handleSearchChange}
+          placeholder="Search notes by title or content..."
+          className="w-full rounded-lg border border-stone-300 bg-white py-2.5 pl-10 pr-10 text-sm text-stone-900 placeholder-stone-400 shadow-2xs focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+        />
+        {searchInput && (
+          <button
+            type="button"
+            onClick={handleClearSearch}
+            className="absolute inset-y-0 right-0 flex items-center pr-3 text-stone-400 hover:text-stone-600"
+            aria-label="Clear search query"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {/* Content States */}
+      {isLoading && notes.length === 0 ? (
+        <LoadingState message="Loading your notes..." />
+      ) : error ? (
+        <ErrorState
+          title="Could not load notes"
+          message={error}
+          onRetry={() => loadNotes()}
+        />
+      ) : notes.length === 0 ? (
+        activeQuery ? (
+          <div className="text-center py-12 px-4 rounded-xl border-2 border-dashed border-stone-200 bg-white">
+            <svg
+              className="mx-auto h-10 w-10 text-stone-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              aria-hidden="true"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+            <h2 className="mt-3 text-base font-semibold text-stone-900">
+              No notes matching &ldquo;{activeQuery}&rdquo;
+            </h2>
+            <p className="mt-1 text-sm text-stone-500 max-w-sm mx-auto">
+              Search looks through both note titles and plain-text content. Try adjusting your query.
+            </p>
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="inline-flex items-center rounded-lg border border-stone-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50"
+              >
+                Clear search
+              </button>
+            </div>
+          </div>
+        ) : (
+          <EmptyState
+            title="No notes yet"
+            description="Your notes and documentation will live here. Capture your thoughts, ideas, and meeting notes in rich text."
+            note="Click 'New note' to create your first note."
+            icon={
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+              </svg>
+            }
+          />
+        )
+      ) : (
+        /* Notes Cards List */
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {notes.map((note) => (
+              <Link
+                key={note.id}
+                to={`/notes/${note.id}`}
+                className="group relative flex flex-col justify-between rounded-xl border border-stone-200 bg-white p-5 shadow-2xs transition-all hover:border-teal-300 hover:shadow-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
+              >
+                <div>
+                  <h2 className="text-base font-semibold text-stone-900 group-hover:text-teal-800 line-clamp-1">
+                    {note.title || "Untitled note"}
+                  </h2>
+                  <p className="mt-2 text-sm text-stone-600 line-clamp-2 leading-relaxed min-h-[2.5rem]">
+                    {note.preview || <span className="italic text-stone-400">Empty note</span>}
+                  </p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs text-stone-400">
+                  <span>Updated {formatTimestamp(note.updatedAt)}</span>
+                  <span className="font-mono text-[11px] text-stone-300">v{note.version}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Pagination Toolbar */}
+          <div className="flex items-center justify-between border-t border-stone-200 pt-4 text-sm text-stone-600">
+            <div>
+              Showing <span className="font-medium text-stone-900">{currentStart}</span> to{" "}
+              <span className="font-medium text-stone-900">{currentEnd}</span> of{" "}
+              <span className="font-medium text-stone-900">{total}</span> notes
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={offset === 0 || isLoading}
+                onClick={() => setOffset((prev) => Math.max(0, prev - PAGE_SIZE))}
+                className="inline-flex items-center rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+
+              <button
+                type="button"
+                disabled={!hasMore || offset + PAGE_SIZE >= total || isLoading}
+                onClick={() => setOffset((prev) => prev + PAGE_SIZE)}
+                className="inline-flex items-center rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

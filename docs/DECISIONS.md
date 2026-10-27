@@ -67,3 +67,20 @@ This document records the foundational architectural decisions agreed upon for M
   - Local model inference via Ollama.
   - Commercial API (OpenAI, Anthropic, Google Gemini).
 - **Status:** **OPEN** — *Recommendation: Deferred completely to Stage 14. No AI dependencies or keys in the initial build.*
+
+### DEC-06: Rich-Text Editor & Schema Validation Strategy
+- **Options:**
+  - Quill / Draft.js / Slate.js / Tiptap.
+- **Decision:** **Tiptap v3 (Headless ProseMirror)** for the frontend editor paired with handwritten recursive ProseMirror JSON validation on the backend.
+- **Rationale:** Tiptap is open-source (MIT), zero-cost, outputs clean ProseMirror JSON trees, and runs cleanly with React 19. Unsupported extensions (such as links and underlines) are explicitly disabled in StarterKit. The backend validates nodes, marks, limits (200 char title, 256 KiB size, 20 max depth, 5,000 max nodes), and derives plain text without DOM dependencies.
+- **Status:** **CONFIRMED (Stage 5A/5B Completed)**.
+
+### DEC-07: Note Mutation & Concurrency Control Strategy
+- **Options:**
+  - Last-write-wins (silent overwrites).
+  - Optimistic concurrency control via integer versioning.
+  - Real-time collaborative CRDTs.
+- **Decision:** **Optimistic Concurrency Control (OCC)** using an atomic integer `version` field.
+- **Rationale:** MyNotes is a personal workspace. OCC prevents multi-tab or concurrent process overwrites. Clients submit `expectedVersion`; stale versions return HTTP 409 `NOTE_VERSION_CONFLICT`. In Stage 5B, the editor preserves the user's local draft, provides copy utilities, and requires explicit user confirmation before discarding local changes to reload the latest version.
+- **Status:** **CONFIRMED (Stage 5A/5B Completed)**.
+

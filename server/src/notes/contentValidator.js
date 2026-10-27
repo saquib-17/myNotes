@@ -256,6 +256,10 @@ function validateNode(node, parentType, depth, counter) {
             if (!Number.isInteger(attrs.start) || attrs.start < 1) {
               throw new ValidationError('orderedList "start" must be a positive integer.');
             }
+          } else if (k === 'type') {
+            if (attrs.type !== null && (typeof attrs.type !== 'string' || attrs.type.length > 20)) {
+              throw new ValidationError('orderedList "type" must be null or a string up to 20 chars.');
+            }
           } else {
             throw new ValidationError(`Unknown attribute "${k}" on orderedList.`);
           }
@@ -329,8 +333,8 @@ function validateNode(node, parentType, depth, counter) {
         }
         for (const k of Object.keys(attrs)) {
           if (k === 'language') {
-            if (typeof attrs.language !== 'string' || attrs.language.length > 50) {
-              throw new ValidationError('codeBlock "language" must be a string up to 50 chars.');
+            if (attrs.language !== null && (typeof attrs.language !== 'string' || attrs.language.length > 50)) {
+              throw new ValidationError('codeBlock "language" must be null or a string up to 50 chars.');
             }
           } else {
             throw new ValidationError(`Unknown attribute "${k}" on codeBlock.`);

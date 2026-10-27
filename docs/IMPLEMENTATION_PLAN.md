@@ -217,11 +217,18 @@ This document details the stage-by-stage implementation plan for MyNotes. Each s
     - REST endpoints: `POST /api/notes`, `GET /api/notes`, `GET /api/notes/:id`, `PATCH /api/notes/:id`, `POST /api/notes/:id/trash`.
     - Optimistic concurrency: `expectedVersion` check returns `409 Conflict` (`NOTE_VERSION_CONFLICT`) on stale updates.
     - Security: `requireAuth`, `requireCsrf`, Origin validation, `Cache-Control: no-store`.
-    - Unit, route, and PostgreSQL integration tests (55 tests + 11 live DB assertions).
-  - **Stage 5B: Frontend Rich-Text Editor & Core Notes UI (Pending):**
-    - Tiptap editor integration supporting headings, lists, blockquotes, and code blocks.
-    - Notes list page with real-time preview, search, and pagination.
-    - Autosave with debounced dispatch and conflict notification.
+    - Unit, route, and PostgreSQL integration tests (56 tests + 11 live DB assertions).
+  - **Stage 5B: Frontend Notes List, Rich-Text Editor & Explicit-Save Workflow (Completed):**
+    - Free/open-source Tiptap v3 integration (`@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/pm`) matching server ProseMirror contract. Unsupported features (link, underline) explicitly disabled.
+    - Notes list page (`/notes`) with server search, debounce, pagination, previews, and single-click "New note" with duplicate-submission protection.
+    - Note editor page (`/notes/:noteId`) with editable title, accessible formatting toolbar, explicit Save button, and status indicators.
+    - Clean dirty-state comparison against confirmed saved baseline, supporting undo back to baseline. Editing disabled during save.
+    - Version conflict resolution: preserves local drafts on 409 conflict, offers draft copy (with manual textarea fallback), and confirmed reload.
+    - Accidental data loss protection: in-app navigation guard (modal with Stay vs Discard), popstate guard, and browser beforeunload listener.
+    - Soft-deletion (Trash): confirmation modal with unsaved changes warning, optimistic concurrency versioning, and redirect to `/notes`.
+    - Automated tests: 23 frontend unit/component tests in `client/src/test/notes.test.jsx`. All 76 client tests and 56 server tests pass cleanly.
+    - Zero lint errors/warnings across frontend and backend; clean production build.
+    - Autosave policy: Autosave is explicitly not implemented / deferred per Stage 5B scope boundaries.
   - **Stage 5C: Editor Polish, Shortcuts & End-to-End Verification (Pending).**
 - **Verification Approach:**
   - Server test suite: `npm test` in `server/` (55 tests passing).

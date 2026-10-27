@@ -33,10 +33,10 @@ Rich-text note content (`content_json`) is validated server-side against a stric
 - `paragraph`: Standard text container.
 - `heading`: Supported attributes: `{ level: 1 | 2 | 3 }`. Levels outside 1–3 are rejected.
 - `bulletList`: Container for unordered list items.
-- `orderedList`: Container for ordered list items.
+- `orderedList`: Container for ordered list items. Supported attributes: `{ start?: number (integer >= 1), type?: string | null }`.
 - `listItem`: List item containing block content (paragraphs, nested lists).
 - `blockquote`: Quotation block containing block content.
-- `codeBlock`: Code snippet. Supported attribute: `{ language?: string }`. Child text nodes inside code blocks **cannot** have marks.
+- `codeBlock`: Code snippet. Supported attribute: `{ language?: string | null }` (up to 50 chars). Child text nodes inside code blocks **cannot** have marks.
 - `hardBreak`: Line break (`<br>`).
 - `horizontalRule`: Divider line (`<hr>`).
 - `text`: Leaf text node. Must have a string `text` property.

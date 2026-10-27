@@ -7,6 +7,7 @@ import LoginPage from "./pages/LoginPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import NotesPage from "./pages/NotesPage.jsx";
+import NoteEditorPage from "./pages/NoteEditorPage.jsx";
 import QuestionsPage from "./pages/QuestionsPage.jsx";
 import DocumentsPage from "./pages/DocumentsPage.jsx";
 import TasksPage from "./pages/TasksPage.jsx";
@@ -101,6 +102,7 @@ function AppRoutes() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="notes" element={<NotesPage />} />
+        <Route path="notes/:noteId" element={<NoteEditorPage />} />
         <Route path="questions" element={<QuestionsPage />} />
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="tasks" element={<TasksPage />} />

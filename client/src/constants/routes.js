@@ -15,10 +15,13 @@ export const APPROVED_ROUTES = [
   "/journal",
 ];
 
+const NOTE_DETAIL_ROUTE_REGEX = /^\/notes\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Validates a return path against approved private routes.
  * Rejects external URLs, protocol-relative paths (//), unknown routes,
  * or anything that does not match an approved private route.
+ * Also allows valid internal note detail paths (/notes/:uuid).
  * Always falls back to /dashboard.
  *
  * @param {string|undefined} pathname
@@ -29,6 +32,9 @@ export function safeReturnPath(pathname) {
     return "/dashboard";
   }
   if (APPROVED_ROUTES.includes(pathname)) {
+    return pathname;
+  }
+  if (NOTE_DETAIL_ROUTE_REGEX.test(pathname)) {
     return pathname;
   }
   return "/dashboard";
@@ -113,6 +119,9 @@ export const NAV_GROUPS = [
  * @returns {{ title: string, description: string }}
  */
 export function getRouteMetadata(pathname) {
+  if (typeof pathname === "string" && NOTE_DETAIL_ROUTE_REGEX.test(pathname)) {
+    return { title: "Note Editor", description: "Edit your private rich-text note." };
+  }
   for (const group of NAV_GROUPS) {
     const item = group.items.find((i) => i.to === pathname);
     if (item) {

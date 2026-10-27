@@ -65,6 +65,12 @@ function NavIcon({ name }) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
         </svg>
       );
+    case "Trash":
+      return (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -214,6 +220,24 @@ export default function AppLayout() {
           </div>
         </div>
       ))}
+
+      {/* Trash navigation link */}
+      <div className="pt-2 border-t border-stone-100">
+        <NavLink
+          to="/trash"
+          onClick={onItemClick}
+          className={({ isActive }) =>
+            `group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              isActive
+                ? "bg-red-50 text-red-900 font-semibold"
+                : "text-stone-500 hover:bg-stone-100 hover:text-stone-900"
+            }`
+          }
+        >
+          <NavIcon name="Trash" />
+          <span>Trash</span>
+        </NavLink>
+      </div>
     </nav>
   );
 

@@ -6,6 +6,7 @@
 export const APPROVED_ROUTES = [
   "/dashboard",
   "/notes",
+  "/trash",
   "/questions",
   "/documents",
   "/tasks",
@@ -121,6 +122,9 @@ export const NAV_GROUPS = [
 export function getRouteMetadata(pathname) {
   if (typeof pathname === "string" && NOTE_DETAIL_ROUTE_REGEX.test(pathname)) {
     return { title: "Note Editor", description: "Edit your private rich-text note." };
+  }
+  if (pathname === "/trash") {
+    return { title: "Trash", description: "View and restore soft-deleted notes." };
   }
   for (const group of NAV_GROUPS) {
     const item = group.items.find((i) => i.to === pathname);

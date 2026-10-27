@@ -20,6 +20,7 @@ import InboxPage from "./pages/InboxPage.jsx";
 import WorkspacesPage from "./pages/WorkspacesPage.jsx";
 import RevisionPage from "./pages/RevisionPage.jsx";
 import JournalPage from "./pages/JournalPage.jsx";
+import TrashPage from "./pages/TrashPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
 import { getAppRouter } from "./routes/appRoutes.jsx";
 
@@ -43,6 +44,7 @@ export function AppRoutes() {
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="notes" element={<NotesPage />} />
         <Route path="notes/:noteId" element={<NoteEditorPage />} />
+        <Route path="trash" element={<TrashPage />} />
         <Route path="questions" element={<QuestionsPage />} />
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="tasks" element={<TasksPage />} />

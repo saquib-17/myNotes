@@ -366,4 +366,100 @@ export async function unpinNote(id, { csrfToken }) {
   };
 }
 
+/**
+ * Fetches paginated soft-deleted (trashed) notes for the authenticated user.
+ *
+ * @param {object} params
+ * @param {number} [params.limit=20] - Page size
+ * @param {number} [params.offset=0] - Offset
+ * @param {AbortSignal} [params.signal] - Optional abort signal
+ * @returns {Promise<{ notes: Array<object>, total: number, limit: number, offset: number, hasMore: boolean }>}
+ */
+export async function fetchTrashedNotes({ limit = 20, offset = 0, signal } = {}) {
+  const params = new URLSearchParams();
+  if (limit) params.set('limit', String(limit));
+  if (offset) params.set('offset', String(offset));
+
+  const response = await fetch(`${API_BASE}/trash?${params.toString()}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to fetch trashed notes (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  const rawList = (
+    Array.isArray(data.notes)
+      ? data.notes
+      : Array.isArray(data.items)
+      ? data.items
+      : []
+  ).map((note) => ({
+    ...note,
+    pinned: Boolean(note.pinned),
+  }));
+
+  const normalizedTotal =
+    typeof data.total === 'number'
+      ? data.total
+      : (typeof data.offset === 'number' ? data.offset : offset) + rawList.length;
+
+  return {
+    ...data,
+    notes: rawList,
+    items: rawList,
+    total: normalizedTotal,
+    hasMore: Boolean(data.hasMore),
+  };
+}
+
+/**
+ * Restores a soft-deleted note from the trash.
+ *
+ * @param {string} id - Note UUID
+ * @param {object} params
+ * @param {string} params.csrfToken
+ * @returns {Promise<{ id: string, title: string, pinned: boolean, version: number, [key: string]: any }>}
+ */
+export async function restoreNote(id, { csrfToken }) {
+  if (!csrfToken) {
+    throw new Error('CSRF token is required to restore a note.');
+  }
+
+  const response = await fetch(`${API_BASE}/${id}/restore`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'X-Csrf-Token': csrfToken,
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to restore note (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return {
+    ...data,
+    pinned: Boolean(data.pinned),
+  };
+}
+
+
 

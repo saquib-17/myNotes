@@ -285,3 +285,94 @@ export async function setNotePinned({
 
   return { notFound: true };
 }
+
+/**
+ * Lists soft-deleted (trashed) notes for an authenticated user with pagination.
+ * Excludes active notes (deleted_at IS NOT NULL).
+ * Ordered by deleted_at DESC, updated_at DESC, id ASC.
+ *
+ * @param {object} params
+ * @param {string} params.userId
+ * @param {number} [params.limit=20]
+ * @param {number} [params.offset=0]
+ * @param {import('pg').Pool} [params.pool]
+ * @returns {Promise<{ rawItems: object[], total: number, limit: number, offset: number, hasMore: boolean }>}
+ */
+export async function findTrashedNotesByUserId({
+  userId,
+  limit = 20,
+  offset = 0,
+  pool = getPool(),
+}) {
+  const conditions = ['user_id = $1', 'deleted_at IS NOT NULL'];
+  const values = [userId];
+
+  // Count total trashed notes for accurate pagination
+  const countQuery = `
+    SELECT COUNT(*)::int AS total
+    FROM notes
+    WHERE ${conditions.join(' AND ')};
+  `;
+  const countResult = await pool.query(countQuery, values);
+  const total = countResult.rows[0]?.total ?? 0;
+
+  // Request limit + 1 rows to detect hasMore
+  const selectValues = [...values, limit + 1, offset];
+  const limitParamIdx = selectValues.length - 1;
+  const offsetParamIdx = selectValues.length;
+
+  const query = `
+    SELECT id, title, content_text, pinned, version, created_at AS "createdAt", updated_at AS "updatedAt", deleted_at AS "deletedAt"
+    FROM notes
+    WHERE ${conditions.join(' AND ')}
+    ORDER BY deleted_at DESC, updated_at DESC, id ASC
+    LIMIT $${limitParamIdx} OFFSET $${offsetParamIdx};
+  `;
+
+  const result = await pool.query(query, selectValues);
+  const hasMore = result.rows.length > limit;
+  const rawItems = hasMore ? result.rows.slice(0, limit) : result.rows;
+
+  return {
+    rawItems,
+    total,
+    limit,
+    offset,
+    hasMore,
+  };
+}
+
+/**
+ * Restores a soft-deleted note by setting deleted_at = NULL.
+ * Only succeeds if the note is currently soft-deleted (deleted_at IS NOT NULL)
+ * and owned by the specified user.
+ *
+ * @param {object} params
+ * @param {string} params.id
+ * @param {string} params.userId
+ * @param {import('pg').Pool} [params.pool]
+ * @returns {Promise<{ restoredNote?: object, notFound?: boolean }>}
+ */
+export async function restoreNote({
+  id,
+  userId,
+  pool = getPool(),
+}) {
+  const query = `
+    UPDATE notes
+    SET deleted_at = NULL,
+        updated_at = now()
+    WHERE id = $1
+      AND user_id = $2
+      AND deleted_at IS NOT NULL
+    RETURNING id, title, content_json AS content, pinned, version, created_at AS "createdAt", updated_at AS "updatedAt";
+  `;
+
+  const result = await pool.query(query, [id, userId]);
+  if (result.rowCount === 1) {
+    return { restoredNote: result.rows[0] };
+  }
+
+  // Not found, owned by someone else, or already active
+  return { notFound: true };
+}

@@ -301,6 +301,70 @@ Sets `pinned = false` on an active note belonging to the authenticated user.
 
 ---
 
+### 3.8. List Trashed Notes
+`GET /api/notes/trash`
+
+Retrieves a paginated list of soft-deleted (`deleted_at IS NOT NULL`) notes owned by the authenticated user, sorted by `deleted_at DESC, updated_at DESC, id ASC`. Active notes are strictly excluded.
+
+- **Query Parameters:**
+  - `limit` *(integer, optional)*: Page size (1 to 100, default: 20).
+  - `offset` *(integer, optional)*: Starting offset (>= 0, default: 0).
+- **Responses:**
+  - `200 OK`
+    ```json
+    {
+      "notes": [
+        {
+          "id": "c1f2b6a2-15f1-46ee-86df-5883d65b75ad",
+          "title": "Trashed Note Title",
+          "preview": "Excerpt of deleted content...",
+          "pinned": true,
+          "version": 2,
+          "createdAt": "2026-10-26T14:00:00.000Z",
+          "updatedAt": "2026-10-26T14:30:00.000Z",
+          "deletedAt": "2026-10-26T15:00:00.000Z"
+        }
+      ],
+      "items": [...],
+      "total": 1,
+      "limit": 20,
+      "offset": 0,
+      "hasMore": false
+    }
+    ```
+  - `400 Bad Request`: Negative offset or invalid limit.
+  - `401 Unauthorized`: Unauthenticated.
+
+---
+
+### 3.9. Restore Note
+`POST /api/notes/:id/restore`
+
+Restores a soft-deleted note by setting `deleted_at = NULL` and updating `updated_at = NOW()`. Preserves existing `title`, `content`, `pinned` state, and `version`. Only soft-deleted notes owned by the authenticated user can be restored.
+
+- **Headers:**
+  - `Content-Type: application/json`
+  - `X-CSRF-Token: <token>`
+- **Responses:**
+  - `200 OK`
+    ```json
+    {
+      "id": "c1f2b6a2-15f1-46ee-86df-5883d65b75ad",
+      "title": "Trashed Note Title",
+      "content": { "type": "doc", "content": [...] },
+      "pinned": true,
+      "version": 2,
+      "createdAt": "2026-10-26T14:00:00.000Z",
+      "updatedAt": "2026-10-26T15:05:00.000Z"
+    }
+    ```
+  - `400 Bad Request`: Malformed UUID.
+  - `401 Unauthorized`: Unauthenticated.
+  - `403 Forbidden`: CSRF token invalid.
+  - `404 Not Found`: Note does not exist, belongs to another user, or is already active (not in trash).
+
+---
+
 ## 4. Concurrency & Mutation Semantics
 
 ### Atomic Versioning

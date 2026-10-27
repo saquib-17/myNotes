@@ -17,6 +17,7 @@ import InboxPage from "../pages/InboxPage.jsx";
 import WorkspacesPage from "../pages/WorkspacesPage.jsx";
 import RevisionPage from "../pages/RevisionPage.jsx";
 import JournalPage from "../pages/JournalPage.jsx";
+import TrashPage from "../pages/TrashPage.jsx";
 import NotFoundPage from "../pages/NotFoundPage.jsx";
 
 /**
@@ -42,6 +43,7 @@ export const appRoutes = [
       { path: "dashboard", element: <DashboardPage /> },
       { path: "notes", element: <NotesPage /> },
       { path: "notes/:noteId", element: <NoteEditorPage /> },
+      { path: "trash", element: <TrashPage /> },
       { path: "questions", element: <QuestionsPage /> },
       { path: "documents", element: <DocumentsPage /> },
       { path: "tasks", element: <TasksPage /> },

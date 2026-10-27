@@ -21,6 +21,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route, createMemoryRouter, RouterProvider, Link } from "react-router-dom";
 import NotesPage from "../pages/NotesPage.jsx";
 import NoteEditorPage from "../pages/NoteEditorPage.jsx";
+import TrashPage from "../pages/TrashPage.jsx";
 import AppLayout from "../layouts/AppLayout.jsx";
 import { safeReturnPath } from "../constants/routes.js";
 import {
@@ -1819,6 +1820,226 @@ describe("Stage 5B: Frontend Notes & Rich-Text Editor", () => {
       });
 
       expect(pinSpy).toHaveBeenCalledWith(SAMPLE_NOTE.id, { csrfToken: "test-csrf-token" });
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 14. Trash View & Restore Flow
+  // ──────────────────────────────────────────────────────────────────────────
+  describe("14. Trash View & Restore Flow", () => {
+    const TRASHED_NOTE_1 = {
+      id: "trash-1111-1111-1111-111111111111",
+      title: "Discarded Proposal",
+      preview: "Old deprecated design doc.",
+      pinned: true,
+      version: 2,
+      createdAt: "2026-10-27T00:00:00.000Z",
+      updatedAt: "2026-10-27T01:00:00.000Z",
+      deletedAt: "2026-10-27T02:00:00.000Z",
+    };
+
+    const TRASHED_NOTE_2 = {
+      id: "trash-2222-2222-2222-222222222222",
+      title: "Temporary Scratchpad",
+      preview: "Random ideas not needed anymore.",
+      pinned: false,
+      version: 1,
+      createdAt: "2026-10-27T00:00:00.000Z",
+      updatedAt: "2026-10-27T00:30:00.000Z",
+      deletedAt: "2026-10-27T01:30:00.000Z",
+    };
+
+    it("1. Renders empty Trash state ('Trash is empty') when no trashed notes exist", async () => {
+      vi.spyOn(notesService, "fetchTrashedNotes").mockResolvedValue({
+        items: [],
+        total: 0,
+        limit: 20,
+        offset: 0,
+        hasMore: false,
+      });
+
+      render(
+        <MemoryRouter initialEntries={["/trash"]}>
+          <TrashPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("heading", { name: "Trash is empty" })).toBeInTheDocument();
+      });
+
+      // Does not render "No notes yet"
+      expect(screen.queryByRole("heading", { name: "No notes yet" })).not.toBeInTheDocument();
+      expect(screen.getByText(/deleted notes will appear here/i)).toBeInTheDocument();
+    });
+
+    it("2. Renders list of soft-deleted notes with title, preview, and pinned badge", async () => {
+      vi.spyOn(notesService, "fetchTrashedNotes").mockResolvedValue({
+        items: [TRASHED_NOTE_1, TRASHED_NOTE_2],
+        total: 2,
+        limit: 20,
+        offset: 0,
+        hasMore: false,
+      });
+
+      render(
+        <MemoryRouter initialEntries={["/trash"]}>
+          <TrashPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Discarded Proposal")).toBeInTheDocument();
+        expect(screen.getByText("Temporary Scratchpad")).toBeInTheDocument();
+      });
+
+      // Pinned badge on TRASHED_NOTE_1
+      expect(screen.getByText("Pinned")).toBeInTheDocument();
+
+      // Check accessible Restore buttons
+      expect(screen.getByRole("button", { name: 'Restore note "Discarded Proposal"' })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: 'Restore note "Temporary Scratchpad"' })).toBeInTheDocument();
+    });
+
+    it("3. NotesPage includes clear Trash navigation link", async () => {
+      vi.spyOn(notesService, "fetchNotes").mockResolvedValue({
+        items: [],
+        total: 0,
+        limit: 20,
+        offset: 0,
+        hasMore: false,
+      });
+
+      render(
+        <MemoryRouter initialEntries={["/notes"]}>
+          <NotesPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        const trashLink = screen.getByRole("link", { name: "View Trash" });
+        expect(trashLink).toBeInTheDocument();
+        expect(trashLink).toHaveAttribute("href", "/trash");
+      });
+    });
+
+    it("4. Restoring a note removes it from Trash immediately and displays success notification", async () => {
+      vi.spyOn(notesService, "fetchTrashedNotes").mockResolvedValue({
+        items: [TRASHED_NOTE_1],
+        total: 1,
+        limit: 20,
+        offset: 0,
+        hasMore: false,
+      });
+      const restoreSpy = vi.spyOn(notesService, "restoreNote").mockResolvedValue({
+        ...TRASHED_NOTE_1,
+        deletedAt: null,
+      });
+
+      render(
+        <MemoryRouter initialEntries={["/trash"]}>
+          <TrashPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Discarded Proposal")).toBeInTheDocument();
+      });
+
+      const restoreBtn = screen.getByRole("button", { name: 'Restore note "Discarded Proposal"' });
+      await userEvent.click(restoreBtn);
+
+      // Verify immediate removal from list and empty state appearance
+      await waitFor(() => {
+        expect(screen.queryByText("Discarded Proposal")).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Trash is empty" })).toBeInTheDocument();
+      });
+
+      // Verify restore success banner
+      expect(screen.getByRole("status")).toBeInTheDocument();
+      expect(screen.getByText(/Restored/)).toBeInTheDocument();
+
+      expect(restoreSpy).toHaveBeenCalledWith(TRASHED_NOTE_1.id, { csrfToken: "test-csrf-token" });
+    });
+
+    it("5. Restoring a pinned note preserves pinned state and renders in Pinned section on NotesPage", async () => {
+      // 1. Initially NotesPage has no notes
+      vi.spyOn(notesService, "fetchNotes").mockResolvedValue({
+        items: [
+          {
+            ...TRASHED_NOTE_1,
+            deletedAt: null,
+            pinned: true,
+          },
+        ],
+        total: 1,
+        limit: 20,
+        offset: 0,
+        hasMore: false,
+      });
+
+      render(
+        <MemoryRouter initialEntries={["/notes"]}>
+          <NotesPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("heading", { name: "Pinned" })).toBeInTheDocument();
+        expect(screen.getByText("Discarded Proposal")).toBeInTheDocument();
+      });
+    });
+
+    it("6. Reverts optimistic removal from Trash if restoreNote API fails", async () => {
+      vi.spyOn(notesService, "fetchTrashedNotes").mockResolvedValue({
+        items: [TRASHED_NOTE_1],
+        total: 1,
+        limit: 20,
+        offset: 0,
+        hasMore: false,
+      });
+      vi.spyOn(notesService, "restoreNote").mockRejectedValue(new Error("Database connection error"));
+
+      render(
+        <MemoryRouter initialEntries={["/trash"]}>
+          <TrashPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Discarded Proposal")).toBeInTheDocument();
+      });
+
+      const restoreBtn = screen.getByRole("button", { name: 'Restore note "Discarded Proposal"' });
+      await userEvent.click(restoreBtn);
+
+      // Should rollback and display error message
+      await waitFor(() => {
+        expect(screen.getByRole("alert")).toBeInTheDocument();
+        expect(screen.getByText("Database connection error")).toBeInTheDocument();
+        expect(screen.getByText("Discarded Proposal")).toBeInTheDocument();
+      });
+    });
+
+    it("7. Opening a trashed note directly via /notes/:id displays Note Not Found state", async () => {
+      const err = new Error("Note not found.");
+      err.status = 404;
+      vi.spyOn(notesService, "fetchNoteById").mockRejectedValue(err);
+
+      render(
+        <MemoryRouter initialEntries={[`/notes/${TRASHED_NOTE_1.id}`]}>
+          <Routes>
+            <Route path="/notes/:noteId" element={<NoteEditorPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("heading", { name: "Note Not Found" })).toBeInTheDocument();
+        expect(
+          screen.getByText(/belongs to another user, or has been moved to trash/i)
+        ).toBeInTheDocument();
+      });
     });
   });
 });

@@ -460,6 +460,56 @@ describe('Notes REST API Route & Concurrency Tests', () => {
 
         return { success: true };
       },
+
+      findTrashedNotesByUserId: async ({ userId, limit = 20, offset = 0 }) => {
+        const trashed = Array.from(mockNotes.values()).filter(
+          (n) => n.userId === userId && n.deletedAt !== null
+        );
+
+        trashed.sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+
+        const paged = trashed.slice(offset, offset + limit);
+        const hasMore = offset + limit < trashed.length;
+
+        return {
+          rawItems: paged.map((n) => ({
+            id: n.id,
+            title: n.title,
+            content_text: n.content_text,
+            pinned: Boolean(n.pinned),
+            version: n.version,
+            createdAt: n.createdAt,
+            updatedAt: n.updatedAt,
+            deletedAt: n.deletedAt,
+          })),
+          total: trashed.length,
+          limit,
+          offset,
+          hasMore,
+        };
+      },
+
+      restoreNote: async ({ id, userId }) => {
+        const note = mockNotes.get(id);
+        if (!note || note.userId !== userId || note.deletedAt === null) {
+          return { notFound: true };
+        }
+
+        note.deletedAt = null;
+        note.updatedAt = new Date().toISOString();
+
+        return {
+          restoredNote: {
+            id: note.id,
+            title: note.title,
+            content: note.content,
+            pinned: Boolean(note.pinned),
+            version: note.version,
+            createdAt: note.createdAt,
+            updatedAt: note.updatedAt,
+          },
+        };
+      },
     };
 
     const sessionMiddleware = session({
@@ -1065,6 +1115,195 @@ describe('Notes REST API Route & Concurrency Tests', () => {
       assert.strictEqual(searchItems.length, 2);
       assert.strictEqual(searchItems[0].id, n1.body.id, 'Pinned matching note comes first');
       assert.strictEqual(searchItems[1].id, n2.body.id, 'Unpinned matching note comes second');
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Trash View & Restore
+  // ───────────────────────────────────────────────────────────────────────────
+  describe('Trash View & Restore', () => {
+    let agentA;
+    let csrfA;
+    let agentB;
+    let csrfB;
+
+    beforeEach(async () => {
+      agentA = request.agent(app);
+      agentB = request.agent(app);
+
+      const csrfResA = await agentA.get('/api/auth/csrf').set('x-user', 'A').expect(200);
+      csrfA = csrfResA.body.csrfToken;
+
+      const csrfResB = await agentB.get('/api/auth/csrf').set('x-user', 'B').expect(200);
+      csrfB = csrfResB.body.csrfToken;
+    });
+
+    it('returns empty list when no trashed notes exist', async () => {
+      const res = await agentA.get('/api/notes/trash').set('x-user', 'A').expect(200);
+      assert.deepStrictEqual(res.body.notes, []);
+      assert.deepStrictEqual(res.body.items, []);
+      assert.strictEqual(res.body.total, 0);
+      assert.strictEqual(res.body.hasMore, false);
+    });
+
+    it('trash listing excludes active notes and shows only soft-deleted notes', async () => {
+      // Create Note 1 (active)
+      const n1 = await agentA
+        .post('/api/notes')
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .send({ title: 'Active Note Stay', content: SAMPLE_DOC })
+        .expect(201);
+
+      // Create Note 2 (trashed)
+      const n2 = await agentA
+        .post('/api/notes')
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .send({ title: 'Trashed Note Target', content: SAMPLE_DOC })
+        .expect(201);
+
+      // Trash Note 2
+      await agentA
+        .post(`/api/notes/${n2.body.id}/trash`)
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .send({ expectedVersion: 1 })
+        .expect(204);
+
+      // Verify active list: only Note 1
+      const activeRes = await agentA.get('/api/notes').set('x-user', 'A').expect(200);
+      const activeIds = activeRes.body.items.map((i) => i.id);
+      assert.ok(activeIds.includes(n1.body.id));
+      assert.ok(!activeIds.includes(n2.body.id));
+
+      // Verify trash list: only Note 2
+      const trashRes = await agentA.get('/api/notes/trash').set('x-user', 'A').expect(200);
+      const trashIds = trashRes.body.items.map((i) => i.id);
+      assert.ok(!trashIds.includes(n1.body.id), 'Active note must NOT be in trash');
+      assert.ok(trashIds.includes(n2.body.id), 'Trashed note MUST be in trash');
+      assert.ok(trashRes.body.items[0].deletedAt, 'Item in trash must include deletedAt');
+    });
+
+    it('enforces ownership isolation: user cannot list or restore other user trash', async () => {
+      // User A creates and trashes a note
+      const nA = await agentA
+        .post('/api/notes')
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .send({ title: 'User A Secret Note', content: SAMPLE_DOC })
+        .expect(201);
+
+      await agentA
+        .post(`/api/notes/${nA.body.id}/trash`)
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .send({ expectedVersion: 1 })
+        .expect(204);
+
+      // User B checks trash: User A's note must NOT appear
+      const trashB = await agentB.get('/api/notes/trash').set('x-user', 'B').expect(200);
+      assert.ok(!trashB.body.items.some((i) => i.id === nA.body.id));
+
+      // User B attempts to restore User A's note: returns 404
+      await agentB
+        .post(`/api/notes/${nA.body.id}/restore`)
+        .set('X-CSRF-Token', csrfB)
+        .set('x-user', 'B')
+        .expect(404);
+    });
+
+    it('restores a soft-deleted note and preserves its pinned state and version', async () => {
+      // Create pinned note
+      const n = await agentA
+        .post('/api/notes')
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .send({ title: 'Pinned Note To Restore', content: SAMPLE_DOC, pinned: true })
+        .expect(201);
+
+      assert.strictEqual(n.body.pinned, true);
+
+      // Trash the note
+      await agentA
+        .post(`/api/notes/${n.body.id}/trash`)
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .send({ expectedVersion: 1 })
+        .expect(204);
+
+      // Restore the note
+      const restoreRes = await agentA
+        .post(`/api/notes/${n.body.id}/restore`)
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .expect(200);
+
+      assert.strictEqual(restoreRes.body.id, n.body.id);
+      assert.strictEqual(restoreRes.body.pinned, true, 'Pinned state must be preserved upon restore');
+      assert.strictEqual(restoreRes.body.title, 'Pinned Note To Restore');
+
+      // Note is no longer in trash
+      const trashRes = await agentA.get('/api/notes/trash').set('x-user', 'A').expect(200);
+      assert.ok(!trashRes.body.items.some((i) => i.id === n.body.id));
+
+      // Note is back in active list
+      const activeRes = await agentA.get('/api/notes').set('x-user', 'A').expect(200);
+      const restoredInList = activeRes.body.items.find((i) => i.id === n.body.id);
+      assert.ok(restoredInList, 'Restored note must appear in active list');
+      assert.strictEqual(restoredInList.pinned, true);
+
+      // Note is directly accessible via GET /api/notes/:id
+      const directRes = await agentA.get(`/api/notes/${n.body.id}`).set('x-user', 'A').expect(200);
+      assert.strictEqual(directRes.body.id, n.body.id);
+    });
+
+    it('returns 404 when attempting to restore an already-active note', async () => {
+      const activeNote = await agentA
+        .post('/api/notes')
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .send({ title: 'Already Active', content: SAMPLE_DOC })
+        .expect(201);
+
+      await agentA
+        .post(`/api/notes/${activeNote.body.id}/restore`)
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .expect(404);
+    });
+
+    it('returns 404 for non-existent note UUID', async () => {
+      await agentA
+        .post('/api/notes/99999999-9999-4999-8999-999999999999/restore')
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .expect(404);
+    });
+
+    it('returns 400 for malformed UUID in restore endpoint', async () => {
+      await agentA
+        .post('/api/notes/not-a-valid-uuid/restore')
+        .set('X-CSRF-Token', csrfA)
+        .set('x-user', 'A')
+        .expect(400);
+    });
+
+    it('validates pagination parameters for GET /api/notes/trash', async () => {
+      await agentA
+        .get('/api/notes/trash?limit=-5')
+        .set('x-user', 'A')
+        .expect(400);
+
+      await agentA
+        .get('/api/notes/trash?limit=999')
+        .set('x-user', 'A')
+        .expect(400);
+
+      await agentA
+        .get('/api/notes/trash?offset=-1')
+        .set('x-user', 'A')
+        .expect(400);
     });
   });
 });

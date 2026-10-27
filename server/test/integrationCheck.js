@@ -10,6 +10,8 @@ import {
   updateNote,
   trashNote,
   setNotePinned,
+  findTrashedNotesByUserId,
+  restoreNote,
 } from '../src/notes/noteRepository.js';
 import { derivePlainText, validateContent } from '../src/notes/contentValidator.js';
 
@@ -258,6 +260,33 @@ async function runControlledIntegrationCheck() {
 
     console.log('[Integration Check] Verified soft-deletion to trash: version incremented to 3, excluded from active queries.');
 
+    // 10.5. Verify Trash Listing & Restore in PostgreSQL
+    const trashListA = await findTrashedNotesByUserId({ userId: userA.id, pool });
+    assert.strictEqual(trashListA.rawItems.length, 1);
+    assert.strictEqual(trashListA.rawItems[0].id, noteA.id);
+    assert.strictEqual(trashListA.rawItems[0].pinned, true, 'Pinned status must be present in trash');
+    assert.ok(trashListA.rawItems[0].deletedAt !== null);
+
+    // Cross-user trash isolation check
+    const trashListB = await findTrashedNotesByUserId({ userId: userB.id, pool });
+    assert.strictEqual(trashListB.rawItems.length, 0, 'User B must not see User A trashed notes');
+
+    // Restore noteA
+    const restoreResult = await restoreNote({ id: noteA.id, userId: userA.id, pool });
+    assert.ok(restoreResult.restoredNote, 'Restore must return restored note');
+    assert.strictEqual(restoreResult.restoredNote.pinned, true, 'Pinned status must be preserved after restore');
+
+    // Active listing must return noteA again
+    const listAfterRestore = await findNotesByUserId({ userId: userA.id, pool });
+    assert.strictEqual(listAfterRestore.rawItems.length, 1);
+    assert.strictEqual(listAfterRestore.rawItems[0].id, noteA.id);
+    assert.strictEqual(listAfterRestore.rawItems[0].pinned, true);
+
+    // Soft-delete again for foreign-key check
+    await trashNote({ id: noteA.id, userId: userA.id, expectedVersion: 3, pool });
+
+    console.log('[Integration Check] Verified trash listing, ownership isolation, and restore with preserved pinned state in PostgreSQL.');
+
     // 11. Verify Foreign Key ON DELETE RESTRICT policy
     let deleteUserBlocked = false;
     try {
@@ -270,7 +299,7 @@ async function runControlledIntegrationCheck() {
     assert.strictEqual(deleteUserBlocked, true, 'User deletion must be blocked by foreign key constraint ON DELETE RESTRICT');
     console.log('[Integration Check] Verified foreign key policy: ON DELETE RESTRICT prevents accidental cascading deletion.');
 
-    console.log('\n[Integration Check SUCCESS] All 11 PostgreSQL integration assertions passed.');
+    console.log('\n[Integration Check SUCCESS] All 12 PostgreSQL integration assertions passed.');
   } finally {
     // 12. Clean up exact temporary records created by this check
     console.log('[Integration Check] Cleaning up temporary records...');

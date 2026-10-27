@@ -193,6 +193,72 @@ export function createNotesRouter({
   });
 
   /**
+   * GET /api/notes/trash
+   * Retrieves paginated soft-deleted notes owned by the authenticated user.
+   */
+  router.get('/trash', async (req, res, next) => {
+    try {
+      const { limit = '20', offset = '0' } = req.query;
+
+      // Validate limit: integer between 1 and 100
+      if (typeof limit !== 'string' || !/^\d+$/.test(limit)) {
+        return res.status(400).json({
+          error: 'BadRequest',
+          message: 'Query parameter "limit" must be a positive integer between 1 and 100.',
+        });
+      }
+      const parsedLimit = parseInt(limit, 10);
+      if (parsedLimit < 1 || parsedLimit > 100) {
+        return res.status(400).json({
+          error: 'BadRequest',
+          message: 'Query parameter "limit" must be between 1 and 100.',
+        });
+      }
+
+      // Validate offset: non-negative integer
+      if (typeof offset !== 'string' || !/^\d+$/.test(offset)) {
+        return res.status(400).json({
+          error: 'BadRequest',
+          message: 'Query parameter "offset" must be a non-negative integer.',
+        });
+      }
+      const parsedOffset = parseInt(offset, 10);
+
+      const result = await noteRepository.findTrashedNotesByUserId({
+        userId: req.user.id,
+        limit: parsedLimit,
+        offset: parsedOffset,
+      });
+
+      const items = result.rawItems.map((row) => ({
+        id: row.id,
+        title: row.title,
+        preview: generatePreview(row.content_text),
+        pinned: Boolean(row.pinned),
+        version: row.version,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        deletedAt: row.deletedAt,
+      }));
+
+      const total = typeof result.total === 'number'
+        ? result.total
+        : (result.offset + items.length + (result.hasMore ? 1 : 0));
+
+      return res.status(200).json({
+        notes: items,
+        items,
+        total,
+        limit: result.limit,
+        offset: result.offset,
+        hasMore: result.hasMore,
+      });
+    } catch (err) {
+      return next(err);
+    }
+  });
+
+  /**
    * GET /api/notes/:id
    * Retrieves a single active note owned by the authenticated user.
    */
@@ -474,6 +540,40 @@ export function createNotesRouter({
       }
 
       return res.status(204).end();
+    } catch (err) {
+      return next(err);
+    }
+  });
+
+  /**
+   * POST /api/notes/:id/restore
+   * Restores a soft-deleted note by setting deleted_at = NULL.
+   * Only the owner can restore, and only soft-deleted notes can be restored.
+   */
+  router.post('/:id/restore', requireCsrf, async (req, res, next) => {
+    try {
+      const { id } = req.params;
+
+      if (!isValidUuid(id)) {
+        return res.status(400).json({
+          error: 'BadRequest',
+          message: 'Invalid note ID format.',
+        });
+      }
+
+      const result = await noteRepository.restoreNote({
+        id,
+        userId: req.user.id,
+      });
+
+      if (result.notFound) {
+        return res.status(404).json({
+          error: 'NotFound',
+          message: 'Note not found or not in trash.',
+        });
+      }
+
+      return res.status(200).json(result.restoredNote);
     } catch (err) {
       return next(err);
     }

@@ -12,6 +12,7 @@ import { ApiError } from './auth.service.js';
 const API_BASE = '/api/notes';
 const COLLECTIONS_API_BASE = '/api/collections';
 const TAGS_API_BASE = '/api/tags';
+const TASKS_API_BASE = '/api/tasks';
 
 export const NOTE_LIMITS = {
   MAX_TITLE_LENGTH: 200,
@@ -21,6 +22,13 @@ export const NOTE_LIMITS = {
 export const TAG_LIMITS = {
   MAX_NAME_LENGTH: 40,
   MAX_TAGS_PER_NOTE: 20,
+};
+
+export const TASK_LIMITS = {
+  MAX_TITLE_LENGTH: 200,
+  MAX_DETAILS_LENGTH: 5000,
+  ALLOWED_STATUSES: ['pending', 'completed'],
+  ALLOWED_PRIORITIES: ['none', 'low', 'medium', 'high'],
 };
 
 /**
@@ -939,6 +947,340 @@ export async function fetchTagNotes(id, { q = '', limit = 20, offset = 0, signal
     tag: data.tag,
   };
 }
+
+/**
+ * Validates task fields on the client before network transmission.
+ */
+export function validateClientTask({ title, details, dueDate, priority, status } = {}) {
+  if (title !== undefined) {
+    if (typeof title !== 'string' || title.trim().length === 0) {
+      throw new Error('Task title cannot be empty.');
+    }
+    if (title.trim().length > TASK_LIMITS.MAX_TITLE_LENGTH) {
+      throw new Error(`Task title cannot exceed ${TASK_LIMITS.MAX_TITLE_LENGTH} characters.`);
+    }
+  }
+
+  if (details !== undefined && details !== null && details.trim().length > 0) {
+    if (details.trim().length > TASK_LIMITS.MAX_DETAILS_LENGTH) {
+      throw new Error(`Task details cannot exceed ${TASK_LIMITS.MAX_DETAILS_LENGTH} characters.`);
+    }
+  }
+
+  if (dueDate !== undefined && dueDate !== null && dueDate.trim().length > 0) {
+    const trimmed = dueDate.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      throw new Error('Task due date must be in YYYY-MM-DD format.');
+    }
+    const [yearStr, monthStr, dayStr] = trimmed.split('-');
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10);
+    const day = parseInt(dayStr, 10);
+
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+    if (
+      parsed.getUTCFullYear() !== year ||
+      parsed.getUTCMonth() !== month - 1 ||
+      parsed.getUTCDate() !== day
+    ) {
+      throw new Error('Task due date must be a valid calendar date.');
+    }
+  }
+
+  if (priority !== undefined && priority !== null) {
+    if (!TASK_LIMITS.ALLOWED_PRIORITIES.includes(priority.toLowerCase())) {
+      throw new Error(`Priority must be one of: ${TASK_LIMITS.ALLOWED_PRIORITIES.join(', ')}.`);
+    }
+  }
+
+  if (status !== undefined && status !== null) {
+    if (!TASK_LIMITS.ALLOWED_STATUSES.includes(status.toLowerCase())) {
+      throw new Error(`Status must be one of: ${TASK_LIMITS.ALLOWED_STATUSES.join(', ')}.`);
+    }
+  }
+}
+
+/**
+ * Fetches tasks owned by the authenticated user.
+ */
+export async function fetchTasks({
+  status,
+  priority,
+  q = '',
+  limit = 20,
+  offset = 0,
+  signal,
+} = {}) {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (priority) params.set('priority', priority);
+  if (q && q.trim()) params.set('q', q.trim());
+  params.set('limit', String(limit));
+  params.set('offset', String(offset));
+
+  const response = await fetch(`${TASKS_API_BASE}?${params.toString()}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to fetch tasks (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  const rawList = Array.isArray(data.tasks)
+    ? data.tasks
+    : Array.isArray(data.items)
+      ? data.items
+      : [];
+
+  const normalizedTotal =
+    typeof data.total === 'number'
+      ? data.total
+      : (typeof data.offset === 'number' ? data.offset : offset) + rawList.length;
+
+  return {
+    tasks: rawList,
+    items: rawList,
+    total: normalizedTotal,
+    limit: data.limit ?? limit,
+    offset: data.offset ?? offset,
+    hasMore: Boolean(data.hasMore),
+  };
+}
+
+/**
+ * Fetches a single task by ID.
+ */
+export async function fetchTaskById(id, { signal } = {}) {
+  const response = await fetch(`${TASKS_API_BASE}/${id}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to fetch task (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Creates a new task.
+ */
+export async function createTask({
+  title,
+  details = null,
+  status = 'pending',
+  priority = 'none',
+  dueDate = null,
+  csrfToken,
+} = {}) {
+  validateClientTask({ title, details, dueDate, priority, status });
+
+  const headers = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  };
+
+  if (csrfToken) {
+    headers['X-Csrf-Token'] = csrfToken;
+  }
+
+  const payload = {
+    title: title.trim(),
+    details: details && details.trim().length > 0 ? details.trim() : null,
+    status,
+    priority,
+    dueDate: dueDate && dueDate.trim().length > 0 ? dueDate.trim() : null,
+  };
+
+  const response = await fetch(TASKS_API_BASE, {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to create task (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Updates an existing task.
+ */
+export async function updateTask(
+  id,
+  {
+    title,
+    details,
+    status,
+    priority,
+    dueDate,
+    csrfToken,
+  } = {}
+) {
+  validateClientTask({ title, details, dueDate, priority, status });
+
+  const headers = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  };
+
+  if (csrfToken) {
+    headers['X-Csrf-Token'] = csrfToken;
+  }
+
+  const payload = {};
+  if (title !== undefined) payload.title = title.trim();
+  if (details !== undefined) {
+    payload.details = details && details.trim().length > 0 ? details.trim() : null;
+  }
+  if (status !== undefined) payload.status = status;
+  if (priority !== undefined) payload.priority = priority;
+  if (dueDate !== undefined) {
+    payload.dueDate = dueDate && dueDate.trim().length > 0 ? dueDate.trim() : null;
+  }
+
+  const response = await fetch(`${TASKS_API_BASE}/${id}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to update task (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Convenience method to mark a task as completed.
+ */
+export async function completeTask(id, { csrfToken } = {}) {
+  const headers = {
+    Accept: 'application/json',
+  };
+
+  if (csrfToken) {
+    headers['X-Csrf-Token'] = csrfToken;
+  }
+
+  const response = await fetch(`${TASKS_API_BASE}/${id}/complete`, {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to complete task (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Convenience method to reopen a task back to pending.
+ */
+export async function reopenTask(id, { csrfToken } = {}) {
+  const headers = {
+    Accept: 'application/json',
+  };
+
+  if (csrfToken) {
+    headers['X-Csrf-Token'] = csrfToken;
+  }
+
+  const response = await fetch(`${TASKS_API_BASE}/${id}/reopen`, {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to reopen task (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Soft deletes a task.
+ */
+export async function deleteTask(id, { csrfToken } = {}) {
+  const headers = {};
+
+  if (csrfToken) {
+    headers['X-Csrf-Token'] = csrfToken;
+  }
+
+  const response = await fetch(`${TASKS_API_BASE}/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers,
+  });
+
+  if (!response.ok) {
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+    throw new ApiError(
+      data?.message || `Failed to delete task (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return true;
+}
+
 
 
 

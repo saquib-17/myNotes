@@ -27,6 +27,14 @@ import {
   updateTag,
   deleteTag,
 } from '../src/tags/tagRepository.js';
+import {
+  createTask,
+  findTasksByUserId,
+  findTaskByIdAndUserId,
+  updateTask,
+  setTaskStatus,
+  softDeleteTask,
+} from '../src/tasks/taskRepository.js';
 import { derivePlainText, validateContent } from '../src/notes/contentValidator.js';
 
 async function runControlledIntegrationCheck() {
@@ -37,6 +45,7 @@ async function runControlledIntegrationCheck() {
   const createdNoteIds = [];
   const createdCollectionIds = [];
   const createdTagIds = [];
+  const createdTaskIds = [];
 
   try {
     // 1. Verify connected database identity
@@ -49,7 +58,7 @@ async function runControlledIntegrationCheck() {
     const tablesCheck = await pool.query(`
       SELECT table_name
       FROM information_schema.tables
-      WHERE table_schema = 'public' AND table_name IN ('users', 'session', 'notes', 'collections', 'tags', 'note_tags', 'app_metadata')
+      WHERE table_schema = 'public' AND table_name IN ('users', 'session', 'notes', 'collections', 'tags', 'note_tags', 'tasks', 'app_metadata')
       ORDER BY table_name;
     `);
     const tableNames = tablesCheck.rows.map((r) => r.table_name);
@@ -58,6 +67,7 @@ async function runControlledIntegrationCheck() {
     assert.ok(tableNames.includes('collections'), 'Table "collections" must exist');
     assert.ok(tableNames.includes('tags'), 'Table "tags" must exist');
     assert.ok(tableNames.includes('note_tags'), 'Table "note_tags" must exist');
+    assert.ok(tableNames.includes('tasks'), 'Table "tasks" must exist');
     assert.ok(tableNames.includes('users'), 'Table "users" must exist');
 
     // 3. Create two isolated temporary user accounts directly in the database
@@ -419,6 +429,60 @@ async function runControlledIntegrationCheck() {
     );
     console.log('[Integration Check] Verified tag creation, uniqueness, note association, filter, rename, and soft-delete unassignment in PostgreSQL.');
 
+    // 10.9. Tasks/Inbox Integration Check: create task -> list task -> complete task -> verify completed_at/status -> reopen task -> edit task -> soft-delete task -> verify exclusion from active task list
+    const createdTask = await createTask({
+      userId: userA.id,
+      title: 'Practice Dijkstra algorithm',
+      details: 'Review edge cases with negative cycles',
+      priority: 'high',
+      dueDate: '2026-11-20',
+      pool,
+    });
+    createdTaskIds.push(createdTask.id);
+    assert.strictEqual(createdTask.title, 'Practice Dijkstra algorithm');
+    assert.strictEqual(createdTask.status, 'pending');
+    assert.strictEqual(createdTask.priority, 'high');
+    assert.strictEqual(createdTask.dueDate, '2026-11-20');
+    assert.strictEqual(createdTask.completedAt, null);
+
+    // List task
+    const taskList = await findTasksByUserId({ userId: userA.id, pool });
+    assert.ok(taskList.tasks.some((t) => t.id === createdTask.id));
+
+    // Complete task
+    const completedTask = await setTaskStatus({ id: createdTask.id, userId: userA.id, status: 'completed', pool });
+    assert.strictEqual(completedTask.task.status, 'completed');
+    assert.ok(completedTask.task.completedAt, 'completedAt must be set upon completion');
+
+    // Reopen task
+    const reopenedTask = await setTaskStatus({ id: createdTask.id, userId: userA.id, status: 'pending', pool });
+    assert.strictEqual(reopenedTask.task.status, 'pending');
+    assert.strictEqual(reopenedTask.task.completedAt, null, 'completedAt must be cleared upon reopening');
+
+    // Edit task
+    const updatedTask = await updateTask({
+      id: createdTask.id,
+      userId: userA.id,
+      title: 'Practice Dijkstra and Bellman-Ford',
+      priority: 'medium',
+      dueDate: '2026-11-25',
+      pool,
+    });
+    assert.strictEqual(updatedTask.task.title, 'Practice Dijkstra and Bellman-Ford');
+    assert.strictEqual(updatedTask.task.priority, 'medium');
+    assert.strictEqual(updatedTask.task.dueDate, '2026-11-25');
+
+    // Soft-delete task
+    const softDelResult = await softDeleteTask({ id: createdTask.id, userId: userA.id, pool });
+    assert.strictEqual(softDelResult.deleted, true);
+
+    // Verify exclusion from active task list and lookup
+    const listAfterDelete = await findTasksByUserId({ userId: userA.id, pool });
+    assert.strictEqual(listAfterDelete.tasks.some((t) => t.id === createdTask.id), false, 'Soft-deleted task must not appear in active task list');
+    const singleAfterDelete = await findTaskByIdAndUserId({ id: createdTask.id, userId: userA.id, pool });
+    assert.strictEqual(singleAfterDelete, null, 'Soft-deleted task must return null from findTaskByIdAndUserId');
+    console.log('[Integration Check] Verified task lifecycle: create -> list -> complete -> reopen -> edit -> soft-delete -> exclusion.');
+
     // 11. Verify Foreign Key ON DELETE RESTRICT policy
     let deleteUserBlocked = false;
     try {
@@ -445,6 +509,9 @@ async function runControlledIntegrationCheck() {
     }
     if (createdCollectionIds.length > 0) {
       await pool.query('DELETE FROM collections WHERE id = ANY($1)', [createdCollectionIds]);
+    }
+    if (createdTaskIds.length > 0) {
+      await pool.query('DELETE FROM tasks WHERE id = ANY($1)', [createdTaskIds]);
     }
     if (createdUserIds.length > 0) {
       await pool.query('DELETE FROM users WHERE id = ANY($1)', [createdUserIds]);

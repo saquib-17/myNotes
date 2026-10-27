@@ -132,7 +132,7 @@ export default function NoteEditorPage() {
   }, [isDirty, isSaving, outlet]);
 
   // Deep comparison against confirmed saved baseline
-  const computeIsDirty = useCallback((curTitle, curContent, curCollectionId) => {
+  const computeIsDirty = useCallback((curTitle, curContent, curCollectionId, curTags) => {
     const baseline = savedBaselineRef.current;
     if (!baseline) return false;
     const titleChanged = curTitle !== baseline.title;
@@ -141,7 +141,14 @@ export default function NoteEditorPage() {
       normalizeEditorContent(curContent),
       normalizeEditorContent(baseline.content)
     );
-    return titleChanged || collectionChanged || contentChanged;
+    const baselineTags = baseline.tags || [];
+    const tagsList = curTags || [];
+    const tagsChanged =
+      tagsList.length !== baselineTags.length ||
+      !tagsList.every((t) =>
+        baselineTags.some((bt) => bt.toLowerCase() === t.toLowerCase())
+      );
+    return titleChanged || collectionChanged || contentChanged || tagsChanged;
   }, []);
 
   // Load note from server
@@ -161,10 +168,14 @@ export default function NoteEditorPage() {
         const loadedTitle = data.title || "Untitled note";
         const loadedContent = normalizeEditorContent(data.content);
         const loadedColId = data.collectionId || null;
+        const loadedTags = Array.isArray(data.tags)
+          ? data.tags.map((t) => (typeof t === "string" ? t : t.name))
+          : [];
 
         setTitle(loadedTitle);
         setContent(loadedContent);
         setCollectionId(loadedColId);
+        setNoteTags(loadedTags);
         setExpectedVersion(data.version);
         setUpdatedAt(data.updatedAt);
         setIsPinned(Boolean(data.pinned));
@@ -173,6 +184,7 @@ export default function NoteEditorPage() {
           title: loadedTitle,
           content: loadedContent,
           collectionId: loadedColId,
+          tags: [...loadedTags],
         };
 
         setIsDirty(false);
@@ -214,7 +226,7 @@ export default function NoteEditorPage() {
     if (isSaving || isTrashing) return;
     const newTitle = e.target.value;
     setTitle(newTitle);
-    const dirty = computeIsDirty(newTitle, content, collectionId);
+    const dirty = computeIsDirty(newTitle, content, collectionId, noteTags);
     setIsDirty(dirty);
     if (dirty) {
       if (saveStatus === "saved") setSaveStatus("unsaved");
@@ -227,7 +239,7 @@ export default function NoteEditorPage() {
   const handleContentChange = (newContent) => {
     if (isSaving || isTrashing) return;
     setContent(newContent);
-    const dirty = computeIsDirty(title, newContent, collectionId);
+    const dirty = computeIsDirty(title, newContent, collectionId, noteTags);
     setIsDirty(dirty);
     if (dirty) {
       if (saveStatus === "saved") setSaveStatus("unsaved");
@@ -241,12 +253,70 @@ export default function NoteEditorPage() {
     if (isSaving || isTrashing) return;
     const newColId = e.target.value || null;
     setCollectionId(newColId);
-    const dirty = computeIsDirty(title, content, newColId);
+    const dirty = computeIsDirty(title, content, newColId, noteTags);
     setIsDirty(dirty);
     if (dirty) {
       if (saveStatus === "saved") setSaveStatus("unsaved");
     } else {
       if (saveStatus === "unsaved") setSaveStatus("saved");
+    }
+  };
+
+  // Tag add & remove handlers
+  const handleAddTag = (rawName) => {
+    if (isSaving || isTrashing) return;
+    const trimmed = rawName.trim().replace(/\s+/g, " ");
+    if (!trimmed) return;
+    if (trimmed.length > TAG_LIMITS.MAX_NAME_LENGTH) {
+      setTagInputError(`Tag cannot exceed ${TAG_LIMITS.MAX_NAME_LENGTH} characters.`);
+      return;
+    }
+    if (noteTags.some((t) => t.toLowerCase() === trimmed.toLowerCase())) {
+      setTagInput("");
+      setShowSuggestions(false);
+      return;
+    }
+    if (noteTags.length >= TAG_LIMITS.MAX_TAGS_PER_NOTE) {
+      setTagInputError(`Maximum of ${TAG_LIMITS.MAX_TAGS_PER_NOTE} tags per note.`);
+      return;
+    }
+    setTagInputError(null);
+    const newTags = [...noteTags, trimmed];
+    setNoteTags(newTags);
+    setTagInput("");
+    setShowSuggestions(false);
+    const dirty = computeIsDirty(title, content, collectionId, newTags);
+    setIsDirty(dirty);
+    if (dirty) {
+      if (saveStatus === "saved") setSaveStatus("unsaved");
+    } else {
+      if (saveStatus === "unsaved") setSaveStatus("saved");
+    }
+  };
+
+  const handleRemoveTag = (tagNameToRemove) => {
+    if (isSaving || isTrashing) return;
+    const newTags = noteTags.filter(
+      (t) => t.toLowerCase() !== tagNameToRemove.toLowerCase()
+    );
+    setNoteTags(newTags);
+    const dirty = computeIsDirty(title, content, collectionId, newTags);
+    setIsDirty(dirty);
+    if (dirty) {
+      if (saveStatus === "saved") setSaveStatus("unsaved");
+    } else {
+      if (saveStatus === "unsaved") setSaveStatus("saved");
+    }
+  };
+
+  const handleTagInputKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      handleAddTag(tagInput);
+    } else if (e.key === "Backspace" && !tagInput && noteTags.length > 0) {
+      handleRemoveTag(noteTags[noteTags.length - 1]);
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
     }
   };
 
@@ -275,6 +345,7 @@ export default function NoteEditorPage() {
         content,
         expectedVersion,
         collectionId,
+        tags: noteTags,
         csrfToken,
       });
 
@@ -283,11 +354,15 @@ export default function NoteEditorPage() {
       const updatedContent = normalizeEditorContent(updated.content);
       const updatedTitle = updated.title || "Untitled note";
       const updatedColId = updated.collectionId || null;
+      const updatedTags = Array.isArray(updated.tags)
+        ? updated.tags.map((t) => (typeof t === "string" ? t : t.name))
+        : [];
 
       // Reconcile state to server canonical values
       setTitle(updatedTitle);
       setContent(updatedContent);
       setCollectionId(updatedColId);
+      setNoteTags(updatedTags);
       setExpectedVersion(updated.version);
       setUpdatedAt(updated.updatedAt);
       if (typeof updated.pinned === "boolean") {
@@ -298,6 +373,7 @@ export default function NoteEditorPage() {
         title: updatedTitle,
         content: updatedContent,
         collectionId: updatedColId,
+        tags: [...updatedTags],
       };
 
       setIsDirty(false);
@@ -306,6 +382,7 @@ export default function NoteEditorPage() {
       setConflict(false);
 
       await refreshCollections();
+      await refreshTags();
     } catch (err) {
       if (loadGenerationRef.current !== currentGen) return;
 
@@ -339,10 +416,12 @@ export default function NoteEditorPage() {
     title,
     content,
     collectionId,
+    noteTags,
     expectedVersion,
     getCsrfToken,
     noteId,
     refreshCollections,
+    refreshTags,
   ]);
 
   // Pin/Unpin action
@@ -878,6 +957,102 @@ export default function NoteEditorPage() {
             <span>Last saved: {new Date(updatedAt).toLocaleTimeString()}</span>
           )}
         </div>
+      </div>
+
+      {/* Tag Input Section */}
+      <div className="space-y-1.5">
+        <label htmlFor="note-tag-input" className="sr-only">
+          Note Tags
+        </label>
+        <div className="flex flex-wrap items-center gap-1.5 min-h-[34px] rounded-lg border border-stone-200 bg-stone-50/50 p-1.5 focus-within:border-teal-600 focus-within:bg-white focus-within:ring-1 focus-within:ring-teal-600">
+          {noteTags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center gap-1 rounded-md bg-stone-100 border border-stone-200 px-2 py-0.5 text-xs font-medium text-stone-700"
+            >
+              <span>#{tag}</span>
+              <button
+                type="button"
+                disabled={isSaving || isTrashing}
+                onClick={() => handleRemoveTag(tag)}
+                aria-label={`Remove tag ${tag}`}
+                className="text-stone-400 hover:text-stone-700 disabled:opacity-40"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+
+          {noteTags.length < TAG_LIMITS.MAX_TAGS_PER_NOTE && (
+            <div className="relative flex-1 min-w-[120px]">
+              <input
+                ref={tagInputRef}
+                id="note-tag-input"
+                type="text"
+                disabled={isSaving || isTrashing}
+                value={tagInput}
+                onChange={(e) => {
+                  setTagInput(e.target.value);
+                  setShowSuggestions(true);
+                  if (tagInputError) setTagInputError(null);
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => {
+                  setTimeout(() => setShowSuggestions(false), 200);
+                }}
+                onKeyDown={handleTagInputKeyDown}
+                placeholder={noteTags.length === 0 ? "Add tags (press Enter or comma)..." : "Add tag..."}
+                className="w-full bg-transparent px-1.5 py-0.5 text-xs text-stone-900 placeholder-stone-400 focus:outline-none disabled:opacity-60"
+              />
+
+              {/* Suggestions Dropdown */}
+              {showSuggestions && tagInput.trim() && (
+                <div className="absolute left-0 top-full z-10 mt-1 max-h-40 w-52 overflow-y-auto rounded-lg border border-stone-200 bg-white p-1 shadow-lg">
+                  {allExistingTags
+                    .filter(
+                      (t) =>
+                        t.name.toLowerCase().includes(tagInput.trim().toLowerCase()) &&
+                        !noteTags.some((nt) => nt.toLowerCase() === t.name.toLowerCase())
+                    )
+                    .slice(0, 5)
+                    .map((sug) => (
+                      <button
+                        key={sug.id}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          handleAddTag(sug.name);
+                        }}
+                        className="flex w-full items-center justify-between rounded px-2 py-1 text-xs text-stone-700 hover:bg-teal-50 hover:text-teal-900"
+                      >
+                        <span>#{sug.name}</span>
+                        <span className="text-3xs text-stone-400">{sug.noteCount || 0}</span>
+                      </button>
+                    ))}
+                  {!allExistingTags.some(
+                    (t) => t.name.toLowerCase() === tagInput.trim().toLowerCase()
+                  ) && (
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleAddTag(tagInput.trim());
+                      }}
+                      className="flex w-full items-center gap-1 rounded px-2 py-1 text-xs text-teal-700 font-medium hover:bg-teal-50"
+                    >
+                      <span>Create</span>
+                      <span className="font-semibold">#{tagInput.trim()}</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {tagInputError && (
+          <p className="text-xs text-red-600">{tagInputError}</p>
+        )}
       </div>
 
       {/* Rich-Text Editing Surface (read-only while saving or trashing) */}

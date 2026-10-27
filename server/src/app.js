@@ -6,6 +6,7 @@ import healthRoutes from './routes/health.routes.js';
 import readyRoutes, { createReadyRouter } from './routes/ready.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import notesRoutes from './routes/notes.routes.js';
+import collectionsRoutes from './routes/collections.routes.js';
 import { getSessionOptions } from './config/session.config.js';
 import { getSessionStore } from './auth/sessionStore.js';
 
@@ -32,6 +33,7 @@ function getDefaultSessionMiddleware() {
  * @param {import('express').RequestHandler} [options.sessionMiddleware] - Custom or in-memory session middleware
  * @param {import('express').Router} [options.authRouter] - Injected authentication router
  * @param {import('express').Router} [options.notesRouter] - Injected notes router
+ * @param {import('express').Router} [options.collectionsRouter] - Injected collections router
  * @returns {express.Express}
  */
 export function createApp({
@@ -39,6 +41,7 @@ export function createApp({
   sessionMiddleware,
   authRouter,
   notesRouter,
+  collectionsRouter,
 } = {}) {
   const app = express();
 
@@ -70,7 +73,7 @@ export function createApp({
     checkReadiness ? createReadyRouter({ checkReadiness }) : readyRoutes
   );
 
-  // Authentication and Private Notes routes with scoped session middleware
+  // Authentication, Private Notes, and Collections routes with scoped session middleware
   const resolvedSessionMiddleware =
     sessionMiddleware !== undefined
       ? sessionMiddleware
@@ -79,9 +82,11 @@ export function createApp({
   if (resolvedSessionMiddleware) {
     app.use('/api/auth', resolvedSessionMiddleware, authRouter || authRoutes);
     app.use('/api/notes', resolvedSessionMiddleware, notesRouter || notesRoutes);
+    app.use('/api/collections', resolvedSessionMiddleware, collectionsRouter || collectionsRoutes);
   } else {
     app.use('/api/auth', authRouter || authRoutes);
     app.use('/api/notes', notesRouter || notesRoutes);
+    app.use('/api/collections', collectionsRouter || collectionsRoutes);
   }
 
   // Fallback for unknown API routes - returns structured JSON 404

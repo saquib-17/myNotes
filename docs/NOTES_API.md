@@ -442,3 +442,94 @@ In the Stage 5 stabilization pass, automatic background autosave was completely 
    - Intercepts in-app links and browser Back/Forward navigation, prompting the user with a modal offering "Stay" vs "Discard changes and leave".
    - `AppLayout` checks dirty state via React Router outlet context before executing shell logout, prompting the user to confirm discarding changes before the session is destroyed on the backend.
    - Trashing a note bypasses dirty warnings upon HTTP 204 and navigates cleanly to `/notes`.
+
+
+---
+
+## 7. Collections API Specification
+
+The Collections API allows authenticated users to organize notes into named collections (e.g. "Java", "DSA", "Placement Prep"). A note belongs to 0 or 1 collection.
+
+### Collection Schema & Rules
+- **ID:** UUID (v4)
+- **Name:** 1–80 characters, trimmed, non-blank.
+- **Uniqueness:** Unique per user across active collections (case-insensitive via PostgreSQL partial index `idx_collections_user_active_name WHERE deleted_at IS NULL`). Duplicate active names return `409 Conflict`.
+- **Soft Delete Policy:** When a collection is deleted (`deleted_at = NOW()`), all notes assigned to it have their `collection_id` cleared to `NULL` in an atomic transaction. The notes themselves remain intact and active in the user's library.
+- **Pinned Notes:** Pinned notes and pinned-first ordering are preserved within collections.
+- **Trash Exemption:** Soft-deleted notes in trash are excluded from collection notes listings.
+
+### Endpoints
+
+#### 7.1 List Collections
+`GET /api/collections`
+Returns all active collections for the current user sorted alphabetically, including active `noteCount`.
+
+- **Response `200 OK`:**
+  ```json
+  {
+    "collections": [
+      {
+        "id": "c011ec71-0001-4000-8000-000000000000",
+        "name": "DSA",
+        "noteCount": 4,
+        "createdAt": "2026-10-27T10:00:00.000Z",
+        "updatedAt": "2026-10-27T10:00:00.000Z"
+      }
+    ],
+    "items": [...],
+    "total": 1
+  }
+  ```
+
+#### 7.2 Create Collection
+`POST /api/collections`
+- **Headers:** `X-CSRF-Token: <token>`, `Content-Type: application/json`
+- **Body:** `{"name": "DSA"}`
+- **Responses:**
+  - `201 Created`: Returns created collection object with `noteCount: 0`.
+  - `400 Bad Request`: Empty name, >80 chars, or invalid JSON.
+  - `409 Conflict`: Active collection with this name already exists for user.
+
+#### 7.3 Rename Collection
+`PATCH /api/collections/:id`
+- **Headers:** `X-CSRF-Token: <token>`, `Content-Type: application/json`
+- **Body:** `{"name": "DSA Advanced"}`
+- **Responses:**
+  - `200 OK`: Returns updated collection object.
+  - `400 Bad Request`: Validation failure.
+  - `404 Not Found`: Collection not found or not owned by user.
+  - `409 Conflict`: Target name already in use by another active collection.
+
+#### 7.4 Delete Collection
+`DELETE /api/collections/:id`
+- **Headers:** `X-CSRF-Token: <token>`
+- **Responses:**
+  - `204 No Content`: Soft-deletes collection and sets `collection_id = NULL` on assigned notes.
+  - `404 Not Found`: Collection not found or not owned by user.
+
+#### 7.5 List Collection Notes
+`GET /api/collections/:id/notes?q=&limit=20&offset=0`
+Returns paginated active notes belonging to this collection, ordered by `pinned DESC, updated_at DESC, id ASC`.
+- **Response `200 OK`:**
+  ```json
+  {
+    "notes": [...],
+    "items": [...],
+    "total": 4,
+    "limit": 20,
+    "offset": 0,
+    "hasMore": false,
+    "collection": {
+      "id": "c011ec71-0001-4000-8000-000000000000",
+      "name": "DSA",
+      "createdAt": "2026-10-27T10:00:00.000Z",
+      "updatedAt": "2026-10-27T10:00:00.000Z"
+    }
+  }
+  ```
+  - `404 Not Found`: Collection does not exist or belongs to another user.
+
+#### 7.6 Note API Extensions for Collections
+- `POST /api/notes`: Request body accepts optional `collectionId` (UUID). Validated against active collections owned by user.
+- `GET /api/notes?collectionId=<uuid>`: Filters notes list to the specified collection ID.
+- `PATCH /api/notes/:id`: Accepts `collectionId` (`UUID` to assign, `null` to unassign, or omitted to keep current assignment). Returns updated `collectionId`.

@@ -18,6 +18,7 @@ import WorkspacesPage from "../pages/WorkspacesPage.jsx";
 import RevisionPage from "../pages/RevisionPage.jsx";
 import JournalPage from "../pages/JournalPage.jsx";
 import TrashPage from "../pages/TrashPage.jsx";
+import CollectionNotesPage from "../pages/CollectionNotesPage.jsx";
 import NotFoundPage from "../pages/NotFoundPage.jsx";
 
 /**
@@ -43,6 +44,7 @@ export const appRoutes = [
       { path: "dashboard", element: <DashboardPage /> },
       { path: "notes", element: <NotesPage /> },
       { path: "notes/:noteId", element: <NoteEditorPage /> },
+      { path: "collections/:collectionId", element: <CollectionNotesPage /> },
       { path: "trash", element: <TrashPage /> },
       { path: "questions", element: <QuestionsPage /> },
       { path: "documents", element: <DocumentsPage /> },

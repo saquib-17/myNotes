@@ -9,6 +9,7 @@ import {
   ValidationError,
 } from '../notes/contentValidator.js';
 import * as defaultNoteRepo from '../notes/noteRepository.js';
+import * as defaultCollectionRepo from '../collections/collectionRepository.js';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -17,11 +18,13 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
  *
  * @param {object} [options]
  * @param {typeof defaultNoteRepo} [options.noteRepository]
+ * @param {typeof defaultCollectionRepo} [options.collectionRepository]
  * @param {import('express').RequestHandler} [options.requireAuthMiddleware]
  * @returns {Router}
  */
 export function createNotesRouter({
   noteRepository = defaultNoteRepo,
+  collectionRepository = defaultCollectionRepo,
   requireAuthMiddleware = defaultRequireAuth,
 } = {}) {
   const router = Router();
@@ -54,7 +57,7 @@ export function createNotesRouter({
       }
 
       // Strict property whitelist: reject unknown fields (e.g. user_id, version)
-      const allowedKeys = new Set(['title', 'content', 'pinned']);
+      const allowedKeys = new Set(['title', 'content', 'pinned', 'collectionId']);
       for (const key of Object.keys(req.body)) {
         if (!allowedKeys.has(key)) {
           return res.status(400).json({
@@ -64,13 +67,32 @@ export function createNotesRouter({
         }
       }
 
-      const { title, content, pinned } = req.body;
+      const { title, content, pinned, collectionId } = req.body;
 
       if (pinned !== undefined && typeof pinned !== 'boolean') {
         return res.status(400).json({
           error: 'BadRequest',
           message: 'Field "pinned" must be a boolean.',
         });
+      }
+
+      if (collectionId !== undefined && collectionId !== null) {
+        if (!isValidUuid(collectionId)) {
+          return res.status(400).json({
+            error: 'BadRequest',
+            message: 'Invalid collection ID format.',
+          });
+        }
+        const collection = await collectionRepository.findCollectionByIdAndUserId({
+          id: collectionId,
+          userId: req.user.id,
+        });
+        if (!collection) {
+          return res.status(400).json({
+            error: 'BadRequest',
+            message: 'Collection not found or unavailable.',
+          });
+        }
       }
 
       if (title === undefined) {
@@ -97,9 +119,13 @@ export function createNotesRouter({
         contentJson: content,
         contentText,
         pinned: Boolean(pinned),
+        collectionId: collectionId || null,
       });
 
-      return res.status(201).json(createdNote);
+      return res.status(201).json({
+        ...createdNote,
+        collectionId: createdNote.collectionId || null,
+      });
     } catch (err) {
       if (err instanceof ValidationError) {
         return res.status(err.status || 400).json({
@@ -118,7 +144,16 @@ export function createNotesRouter({
    */
   router.get('/', async (req, res, next) => {
     try {
-      let { q = '', limit = '20', offset = '0' } = req.query;
+      let { q = '', limit = '20', offset = '0', collectionId } = req.query;
+
+      if (collectionId !== undefined && collectionId !== null && collectionId.trim() !== '') {
+        if (!isValidUuid(collectionId.trim())) {
+          return res.status(400).json({
+            error: 'BadRequest',
+            message: 'Query parameter "collectionId" must be a valid UUID.',
+          });
+        }
+      }
 
       // Validate search string
       if (typeof q !== 'string') {
@@ -161,6 +196,7 @@ export function createNotesRouter({
       const result = await noteRepository.findNotesByUserId({
         userId: req.user.id,
         q,
+        collectionId: collectionId ? collectionId.trim() : undefined,
         limit: parsedLimit,
         offset: parsedOffset,
       });
@@ -170,6 +206,7 @@ export function createNotesRouter({
         title: row.title,
         preview: generatePreview(row.content_text),
         pinned: Boolean(row.pinned),
+        collectionId: row.collectionId || null,
         version: row.version,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
@@ -235,6 +272,7 @@ export function createNotesRouter({
         title: row.title,
         preview: generatePreview(row.content_text),
         pinned: Boolean(row.pinned),
+        collectionId: row.collectionId || null,
         version: row.version,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
@@ -285,7 +323,10 @@ export function createNotesRouter({
         });
       }
 
-      return res.status(200).json(note);
+      return res.status(200).json({
+        ...note,
+        collectionId: note.collectionId || null,
+      });
     } catch (err) {
       return next(err);
     }
@@ -314,7 +355,7 @@ export function createNotesRouter({
       }
 
       // Reject unknown fields
-      const allowedKeys = new Set(['title', 'content', 'expectedVersion', 'pinned']);
+      const allowedKeys = new Set(['title', 'content', 'expectedVersion', 'pinned', 'collectionId']);
       for (const key of Object.keys(req.body)) {
         if (!allowedKeys.has(key)) {
           return res.status(400).json({
@@ -324,13 +365,32 @@ export function createNotesRouter({
         }
       }
 
-      const { title, content, expectedVersion, pinned } = req.body;
+      const { title, content, expectedVersion, pinned, collectionId } = req.body;
 
       if (pinned !== undefined && typeof pinned !== 'boolean') {
         return res.status(400).json({
           error: 'BadRequest',
           message: 'Field "pinned" must be a boolean.',
         });
+      }
+
+      if (collectionId !== undefined && collectionId !== null) {
+        if (!isValidUuid(collectionId)) {
+          return res.status(400).json({
+            error: 'BadRequest',
+            message: 'Invalid collection ID format.',
+          });
+        }
+        const collection = await collectionRepository.findCollectionByIdAndUserId({
+          id: collectionId,
+          userId: req.user.id,
+        });
+        if (!collection) {
+          return res.status(400).json({
+            error: 'BadRequest',
+            message: 'Collection not found or unavailable.',
+          });
+        }
       }
 
       if (title === undefined) {
@@ -373,6 +433,7 @@ export function createNotesRouter({
         contentJson: content,
         contentText,
         pinned,
+        collectionId,
       });
 
       if (updateResult.notFound) {
@@ -390,7 +451,10 @@ export function createNotesRouter({
         });
       }
 
-      return res.status(200).json(updateResult.updatedNote);
+      return res.status(200).json({
+        ...updateResult.updatedNote,
+        collectionId: updateResult.updatedNote.collectionId || null,
+      });
     } catch (err) {
       if (err instanceof ValidationError) {
         return res.status(err.status || 400).json({

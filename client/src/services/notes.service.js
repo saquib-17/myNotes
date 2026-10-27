@@ -65,11 +65,12 @@ export function validateClientNote(title, content) {
  * @param {AbortSignal} [params.signal] - Optional abort signal
  * @returns {Promise<{ notes: Array<object>, total: number, limit: number, offset: number, hasMore: boolean }>}
  */
-export async function fetchNotes({ q = '', limit = 20, offset = 0, signal } = {}) {
+export async function fetchNotes({ q = '', collectionId, limit = 20, offset = 0, signal } = {}) {
   const params = new URLSearchParams();
   if (limit) params.set('limit', String(limit));
   if (offset) params.set('offset', String(offset));
   if (q && q.trim()) params.set('q', q.trim());
+  if (collectionId) params.set('collectionId', collectionId);
 
   const response = await fetch(`${API_BASE}?${params.toString()}`, {
     method: 'GET',
@@ -150,7 +151,7 @@ export async function fetchNoteById(id, { signal } = {}) {
  * @param {string} params.csrfToken
  * @returns {Promise<{ id: string, title: string, content: object, version: number, createdAt: string, updatedAt: string }>}
  */
-export async function createNote({ title = '', content, csrfToken }) {
+export async function createNote({ title = '', content, collectionId, csrfToken }) {
   if (!csrfToken) {
     throw new Error('CSRF token is required for note creation.');
   }
@@ -162,6 +163,9 @@ export async function createNote({ title = '', content, csrfToken }) {
   };
   if (content !== undefined) {
     payload.content = content;
+  }
+  if (collectionId !== undefined && collectionId !== null) {
+    payload.collectionId = collectionId;
   }
 
   const response = await fetch(API_BASE, {
@@ -199,7 +203,7 @@ export async function createNote({ title = '', content, csrfToken }) {
  * @param {string} params.csrfToken
  * @returns {Promise<{ id: string, title: string, content: object, version: number, createdAt: string, updatedAt: string }>}
  */
-export async function updateNote(id, { title, content, expectedVersion, pinned, csrfToken }) {
+export async function updateNote(id, { title, content, expectedVersion, pinned, collectionId, csrfToken }) {
   if (!csrfToken) {
     throw new Error('CSRF token is required for note update.');
   }
@@ -216,6 +220,9 @@ export async function updateNote(id, { title, content, expectedVersion, pinned, 
   };
   if (typeof pinned === 'boolean') {
     payload.pinned = pinned;
+  }
+  if (collectionId !== undefined) {
+    payload.collectionId = collectionId;
   }
 
   const response = await fetch(`${API_BASE}/${id}`, {
@@ -458,6 +465,239 @@ export async function restoreNote(id, { csrfToken }) {
   return {
     ...data,
     pinned: Boolean(data.pinned),
+  };
+}
+
+const COLLECTIONS_API_BASE = '/api/collections';
+
+export const COLLECTION_LIMITS = {
+  MAX_NAME_LENGTH: 80,
+};
+
+export function validateClientCollectionName(name) {
+  if (typeof name !== 'string' || !name.trim()) {
+    throw new Error('Collection name cannot be empty.');
+  }
+  if (name.trim().length > COLLECTION_LIMITS.MAX_NAME_LENGTH) {
+    throw new Error(`Collection name cannot exceed ${COLLECTION_LIMITS.MAX_NAME_LENGTH} characters.`);
+  }
+}
+
+/**
+ * Fetches all active collections for the current user.
+ *
+ * @param {object} [options]
+ * @param {AbortSignal} [options.signal]
+ * @returns {Promise<{ collections: Array<object>, items: Array<object>, total: number }>}
+ */
+export async function fetchCollections({ signal } = {}) {
+  const response = await fetch(COLLECTIONS_API_BASE, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to fetch collections (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  const items = Array.isArray(data.collections)
+    ? data.collections
+    : Array.isArray(data.items)
+    ? data.items
+    : [];
+
+  return {
+    ...data,
+    collections: items,
+    items,
+    total: typeof data.total === 'number' ? data.total : items.length,
+  };
+}
+
+/**
+ * Creates a new named collection.
+ *
+ * @param {object} params
+ * @param {string} params.name
+ * @param {string} params.csrfToken
+ * @returns {Promise<{ id: string, name: string, createdAt: string, updatedAt: string, noteCount: number }>}
+ */
+export async function createCollection({ name, csrfToken }) {
+  if (!csrfToken) {
+    throw new Error('CSRF token is required for collection creation.');
+  }
+
+  validateClientCollectionName(name);
+
+  const response = await fetch(COLLECTIONS_API_BASE, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'X-Csrf-Token': csrfToken,
+    },
+    body: JSON.stringify({ name: name.trim() }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to create collection (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Renames an existing collection.
+ *
+ * @param {string} id
+ * @param {object} params
+ * @param {string} params.name
+ * @param {string} params.csrfToken
+ * @returns {Promise<{ id: string, name: string, createdAt: string, updatedAt: string, noteCount: number }>}
+ */
+export async function updateCollection(id, { name, csrfToken }) {
+  if (!csrfToken) {
+    throw new Error('CSRF token is required for collection update.');
+  }
+
+  validateClientCollectionName(name);
+
+  const response = await fetch(`${COLLECTIONS_API_BASE}/${id}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'X-Csrf-Token': csrfToken,
+    },
+    body: JSON.stringify({ name: name.trim() }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to update collection (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Soft-deletes a collection, clearing collection_id from associated notes.
+ *
+ * @param {string} id
+ * @param {object} params
+ * @param {string} params.csrfToken
+ * @returns {Promise<void>}
+ */
+export async function deleteCollection(id, { csrfToken }) {
+  if (!csrfToken) {
+    throw new Error('CSRF token is required for collection deletion.');
+  }
+
+  const response = await fetch(`${COLLECTIONS_API_BASE}/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      'X-Csrf-Token': csrfToken,
+    },
+  });
+
+  if (response.status === 204) {
+    return;
+  }
+
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    // Non-JSON error
+  }
+
+  throw new ApiError(
+    data?.message || `Failed to delete collection (HTTP ${response.status})`,
+    response.status,
+    data?.code || data?.error
+  );
+}
+
+/**
+ * Fetches notes belonging to a specific collection.
+ *
+ * @param {string} id
+ * @param {object} params
+ * @param {string} [params.q]
+ * @param {number} [params.limit=20]
+ * @param {number} [params.offset=0]
+ * @param {AbortSignal} [params.signal]
+ * @returns {Promise<{ notes: Array<object>, items: Array<object>, total: number, hasMore: boolean, collection: object }>}
+ */
+export async function fetchCollectionNotes(id, { q = '', limit = 20, offset = 0, signal } = {}) {
+  const params = new URLSearchParams();
+  if (limit) params.set('limit', String(limit));
+  if (offset) params.set('offset', String(offset));
+  if (q && q.trim()) params.set('q', q.trim());
+
+  const response = await fetch(`${COLLECTIONS_API_BASE}/${id}/notes?${params.toString()}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to fetch collection notes (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  const rawList = (
+    Array.isArray(data.notes)
+      ? data.notes
+      : Array.isArray(data.items)
+      ? data.items
+      : []
+  ).map((note) => ({
+    ...note,
+    pinned: Boolean(note.pinned),
+  }));
+
+  const normalizedTotal =
+    typeof data.total === 'number'
+      ? data.total
+      : (typeof data.offset === 'number' ? data.offset : offset) + rawList.length;
+
+  return {
+    ...data,
+    notes: rawList,
+    items: rawList,
+    total: normalizedTotal,
+    hasMore: Boolean(data.hasMore),
+    collection: data.collection,
   };
 }
 

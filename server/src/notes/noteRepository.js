@@ -28,39 +28,47 @@ export async function createNote({
   contentJson,
   contentText,
   pinned = false,
+  collectionId = null,
   pool = getPool(),
 }) {
   const query = `
-    INSERT INTO notes (user_id, title, content_json, content_text, pinned, version)
-    VALUES ($1, $2, $3, $4, COALESCE($5, false), 1)
-    RETURNING id, title, content_json AS content, pinned, version, created_at AS "createdAt", updated_at AS "updatedAt";
+    INSERT INTO notes (user_id, title, content_json, content_text, pinned, collection_id, version)
+    VALUES ($1, $2, $3, $4, COALESCE($5, false), $6, 1)
+    RETURNING id, title, content_json AS content, pinned, collection_id AS "collectionId", version, created_at AS "createdAt", updated_at AS "updatedAt";
   `;
 
-  const values = [userId, title, JSON.stringify(contentJson), contentText, Boolean(pinned)];
+  const values = [userId, title, JSON.stringify(contentJson), contentText, Boolean(pinned), collectionId || null];
   const result = await pool.query(query, values);
   return result.rows[0];
 }
 
 /**
- * Lists active notes for an authenticated user with optional search and pagination.
+ * Lists active notes for an authenticated user with optional search, collection filtering, and pagination.
  *
  * @param {object} params
  * @param {string} params.userId
  * @param {string} [params.q] - Search query
+ * @param {string} [params.collectionId] - Optional collection filter UUID
  * @param {number} [params.limit=20]
  * @param {number} [params.offset=0]
  * @param {import('pg').Pool} [params.pool]
- * @returns {Promise<{ items: object[], limit: number, offset: number, hasMore: boolean }>}
+ * @returns {Promise<{ rawItems: object[], total: number, limit: number, offset: number, hasMore: boolean }>}
  */
 export async function findNotesByUserId({
   userId,
   q = '',
+  collectionId,
   limit = 20,
   offset = 0,
   pool = getPool(),
 }) {
   const conditions = ['user_id = $1', 'deleted_at IS NULL'];
   const values = [userId];
+
+  if (typeof collectionId === 'string' && collectionId.trim().length > 0) {
+    values.push(collectionId.trim());
+    conditions.push(`collection_id = $${values.length}`);
+  }
 
   const trimmedQuery = typeof q === 'string' ? q.trim() : '';
   if (trimmedQuery.length > 0) {
@@ -87,7 +95,7 @@ export async function findNotesByUserId({
   const offsetParamIdx = selectValues.length;
 
   const query = `
-    SELECT id, title, content_text, pinned, version, created_at AS "createdAt", updated_at AS "updatedAt"
+    SELECT id, title, content_text, pinned, collection_id AS "collectionId", version, created_at AS "createdAt", updated_at AS "updatedAt"
     FROM notes
     WHERE ${conditions.join(' AND ')}
     ORDER BY pinned DESC, updated_at DESC, id ASC
@@ -122,7 +130,7 @@ export async function findNoteByIdAndUserId({
   pool = getPool(),
 }) {
   const query = `
-    SELECT id, title, content_json AS content, pinned, version, created_at AS "createdAt", updated_at AS "updatedAt"
+    SELECT id, title, content_json AS content, pinned, collection_id AS "collectionId", version, created_at AS "createdAt", updated_at AS "updatedAt"
     FROM notes
     WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL;
   `;
@@ -142,6 +150,7 @@ export async function findNoteByIdAndUserId({
  * @param {object} params.contentJson
  * @param {string} params.contentText
  * @param {boolean} [params.pinned]
+ * @param {string|null} [params.collectionId] - Optional collection UUID or null to unassign
  * @param {import('pg').Pool} [params.pool]
  * @returns {Promise<{ updatedNote?: object, notFound?: boolean, conflict?: boolean }>}
  */
@@ -153,21 +162,24 @@ export async function updateNote({
   contentJson,
   contentText,
   pinned,
+  collectionId,
   pool = getPool(),
 }) {
+  const isCollectionProvided = collectionId !== undefined;
   const updateQuery = `
     UPDATE notes
     SET title = $1,
         content_json = $2,
         content_text = $3,
         pinned = COALESCE($4, pinned),
+        collection_id = CASE WHEN $5::boolean THEN $6::uuid ELSE collection_id END,
         version = version + 1,
         updated_at = now()
-    WHERE id = $5
-      AND user_id = $6
+    WHERE id = $7
+      AND user_id = $8
       AND deleted_at IS NULL
-      AND version = $7
-    RETURNING id, title, content_json AS content, pinned, version, created_at AS "createdAt", updated_at AS "updatedAt";
+      AND version = $9
+    RETURNING id, title, content_json AS content, pinned, collection_id AS "collectionId", version, created_at AS "createdAt", updated_at AS "updatedAt";
   `;
 
   const values = [
@@ -175,6 +187,8 @@ export async function updateNote({
     JSON.stringify(contentJson),
     contentText,
     typeof pinned === 'boolean' ? pinned : null,
+    isCollectionProvided,
+    collectionId || null,
     id,
     userId,
     expectedVersion,
@@ -275,7 +289,7 @@ export async function setNotePinned({
     WHERE id = $2
       AND user_id = $3
       AND deleted_at IS NULL
-    RETURNING id, title, content_json AS content, pinned, version, created_at AS "createdAt", updated_at AS "updatedAt";
+    RETURNING id, title, content_json AS content, pinned, collection_id AS "collectionId", version, created_at AS "createdAt", updated_at AS "updatedAt";
   `;
 
   const result = await pool.query(query, [Boolean(pinned), id, userId]);
@@ -322,7 +336,7 @@ export async function findTrashedNotesByUserId({
   const offsetParamIdx = selectValues.length;
 
   const query = `
-    SELECT id, title, content_text, pinned, version, created_at AS "createdAt", updated_at AS "updatedAt", deleted_at AS "deletedAt"
+    SELECT id, title, content_text, pinned, collection_id AS "collectionId", version, created_at AS "createdAt", updated_at AS "updatedAt", deleted_at AS "deletedAt"
     FROM notes
     WHERE ${conditions.join(' AND ')}
     ORDER BY deleted_at DESC, updated_at DESC, id ASC
@@ -365,7 +379,7 @@ export async function restoreNote({
     WHERE id = $1
       AND user_id = $2
       AND deleted_at IS NOT NULL
-    RETURNING id, title, content_json AS content, pinned, version, created_at AS "createdAt", updated_at AS "updatedAt";
+    RETURNING id, title, content_json AS content, pinned, collection_id AS "collectionId", version, created_at AS "createdAt", updated_at AS "updatedAt";
   `;
 
   const result = await pool.query(query, [id, userId]);

@@ -13,6 +13,13 @@ import {
   findTrashedNotesByUserId,
   restoreNote,
 } from '../src/notes/noteRepository.js';
+import {
+  createCollection,
+  findCollectionsByUserId,
+  findCollectionByIdAndUserId,
+  updateCollection,
+  softDeleteCollection,
+} from '../src/collections/collectionRepository.js';
 import { derivePlainText, validateContent } from '../src/notes/contentValidator.js';
 
 async function runControlledIntegrationCheck() {
@@ -21,6 +28,7 @@ async function runControlledIntegrationCheck() {
   const pool = getPool();
   const createdUserIds = [];
   const createdNoteIds = [];
+  const createdCollectionIds = [];
 
   try {
     // 1. Verify connected database identity
@@ -33,12 +41,13 @@ async function runControlledIntegrationCheck() {
     const tablesCheck = await pool.query(`
       SELECT table_name
       FROM information_schema.tables
-      WHERE table_schema = 'public' AND table_name IN ('users', 'session', 'notes', 'app_metadata')
+      WHERE table_schema = 'public' AND table_name IN ('users', 'session', 'notes', 'collections', 'app_metadata')
       ORDER BY table_name;
     `);
     const tableNames = tablesCheck.rows.map((r) => r.table_name);
     console.log(`[Integration Check] Verified core tables present: ${tableNames.join(', ')}`);
     assert.ok(tableNames.includes('notes'), 'Table "notes" must exist');
+    assert.ok(tableNames.includes('collections'), 'Table "collections" must exist');
     assert.ok(tableNames.includes('users'), 'Table "users" must exist');
 
     // 3. Create two isolated temporary user accounts directly in the database
@@ -287,6 +296,57 @@ async function runControlledIntegrationCheck() {
 
     console.log('[Integration Check] Verified trash listing, ownership isolation, and restore with preserved pinned state in PostgreSQL.');
 
+    // 10.7. Verify Collections in PostgreSQL
+    const createColResult = await createCollection({ userId: userA.id, name: 'Placement Prep', pool });
+    assert.ok(createColResult.collection, 'Collection creation must succeed');
+    const colA = createColResult.collection;
+    createdCollectionIds.push(colA.id);
+
+    // Duplicate active collection name must conflict
+    const dupColResult = await createCollection({ userId: userA.id, name: ' placement prep ', pool });
+    assert.strictEqual(dupColResult.conflict, true, 'Duplicate active collection name must result in conflict');
+
+    // Create note in collection
+    const colNoteResult = await createNote({
+      userId: userA.id,
+      title: 'DSA Roadmap',
+      contentJson: docA,
+      contentText: textA,
+      pinned: false,
+      collectionId: colA.id,
+      pool,
+    });
+    createdNoteIds.push(colNoteResult.id);
+    assert.strictEqual(colNoteResult.collectionId, colA.id);
+
+    // Verify collections listing returns noteCount = 1
+    const colsList = await findCollectionsByUserId({ userId: userA.id, pool });
+    const foundCol = colsList.find((c) => c.id === colA.id);
+    assert.ok(foundCol, 'Created collection must appear in listing');
+    assert.strictEqual(foundCol.noteCount, 1);
+
+    const directCol = await findCollectionByIdAndUserId({ id: colA.id, userId: userA.id, pool });
+    assert.strictEqual(directCol.name, 'Placement Prep');
+
+    // Verify findNotesByUserId collectionId filter
+    const filteredNotes = await findNotesByUserId({ userId: userA.id, collectionId: colA.id, pool });
+    assert.strictEqual(filteredNotes.rawItems.length, 1);
+    assert.strictEqual(filteredNotes.rawItems[0].id, colNoteResult.id);
+
+    // Rename collection
+    const renamedCol = await updateCollection({ id: colA.id, userId: userA.id, name: 'Placement Prep 2026', pool });
+    assert.strictEqual(renamedCol.collection.name, 'Placement Prep 2026');
+
+    // Soft delete collection -> notes must have collection_id = null and remain active
+    const softDelCol = await softDeleteCollection({ id: colA.id, userId: userA.id, pool });
+    assert.strictEqual(softDelCol.success, true);
+
+    const recheckNote = await findNoteByIdAndUserId({ id: colNoteResult.id, userId: userA.id, pool });
+    assert.ok(recheckNote, 'Note must remain active after collection soft-deletion');
+    assert.strictEqual(recheckNote.collectionId, null, 'Note collectionId must be cleared to null');
+
+    console.log('[Integration Check] Verified collection creation, uniqueness, note association, filter, rename, and soft-delete unassignment in PostgreSQL.');
+
     // 11. Verify Foreign Key ON DELETE RESTRICT policy
     let deleteUserBlocked = false;
     try {
@@ -299,12 +359,15 @@ async function runControlledIntegrationCheck() {
     assert.strictEqual(deleteUserBlocked, true, 'User deletion must be blocked by foreign key constraint ON DELETE RESTRICT');
     console.log('[Integration Check] Verified foreign key policy: ON DELETE RESTRICT prevents accidental cascading deletion.');
 
-    console.log('\n[Integration Check SUCCESS] All 12 PostgreSQL integration assertions passed.');
+    console.log('\n[Integration Check SUCCESS] All PostgreSQL integration assertions passed.');
   } finally {
     // 12. Clean up exact temporary records created by this check
     console.log('[Integration Check] Cleaning up temporary records...');
     if (createdNoteIds.length > 0) {
       await pool.query('DELETE FROM notes WHERE id = ANY($1)', [createdNoteIds]);
+    }
+    if (createdCollectionIds.length > 0) {
+      await pool.query('DELETE FROM collections WHERE id = ANY($1)', [createdCollectionIds]);
     }
     if (createdUserIds.length > 0) {
       await pool.query('DELETE FROM users WHERE id = ANY($1)', [createdUserIds]);

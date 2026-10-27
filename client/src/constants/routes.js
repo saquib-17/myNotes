@@ -17,12 +17,13 @@ export const APPROVED_ROUTES = [
 ];
 
 const NOTE_DETAIL_ROUTE_REGEX = /^\/notes\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const COLLECTION_DETAIL_ROUTE_REGEX = /^\/collections\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Validates a return path against approved private routes.
  * Rejects external URLs, protocol-relative paths (//), unknown routes,
  * or anything that does not match an approved private route.
- * Also allows valid internal note detail paths (/notes/:uuid).
+ * Also allows valid internal note detail paths (/notes/:uuid) and collection paths (/collections/:uuid).
  * Always falls back to /dashboard.
  *
  * @param {string|undefined} pathname
@@ -36,6 +37,9 @@ export function safeReturnPath(pathname) {
     return pathname;
   }
   if (NOTE_DETAIL_ROUTE_REGEX.test(pathname)) {
+    return pathname;
+  }
+  if (COLLECTION_DETAIL_ROUTE_REGEX.test(pathname)) {
     return pathname;
   }
   return "/dashboard";
@@ -122,6 +126,9 @@ export const NAV_GROUPS = [
 export function getRouteMetadata(pathname) {
   if (typeof pathname === "string" && NOTE_DETAIL_ROUTE_REGEX.test(pathname)) {
     return { title: "Note Editor", description: "Edit your private rich-text note." };
+  }
+  if (typeof pathname === "string" && COLLECTION_DETAIL_ROUTE_REGEX.test(pathname)) {
+    return { title: "Collection", description: "View and organize notes in this collection." };
   }
   if (pathname === "/trash") {
     return { title: "Trash", description: "View and restore soft-deleted notes." };

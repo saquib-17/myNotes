@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth.js";
+import { useCollections } from "../context/useCollections.js";
 import PageHeader from "../components/PageHeader.jsx";
 import { NAV_GROUPS, getRouteMetadata } from "../constants/routes.js";
 
@@ -93,6 +94,46 @@ export default function AppLayout() {
   const [editorDirty, setEditorDirty] = useState(false);
   const [editorSaving, setEditorSaving] = useState(false);
   const [showLogoutConfirmModal, setShowLogoutConfirmModal] = useState(false);
+
+  // Collections state
+  const { collections, createCollection } = useCollections();
+  const [showCreateCollectionModal, setShowCreateCollectionModal] = useState(false);
+  const [createCollectionInput, setCreateCollectionInput] = useState("");
+  const [createCollectionError, setCreateCollectionError] = useState(null);
+  const [isSubmittingCollection, setIsSubmittingCollection] = useState(false);
+
+  const handleCreateCollectionSubmit = async (e) => {
+    e.preventDefault();
+    const trimmed = createCollectionInput.trim();
+    if (!trimmed) {
+      setCreateCollectionError("Collection name cannot be empty.");
+      return;
+    }
+    if (trimmed.length > 80) {
+      setCreateCollectionError("Collection name cannot exceed 80 characters.");
+      return;
+    }
+
+    setIsSubmittingCollection(true);
+    setCreateCollectionError(null);
+
+    try {
+      const result = await createCollection(trimmed);
+      setShowCreateCollectionModal(false);
+      setCreateCollectionInput("");
+      if (result?.id) {
+        navigate(`/collections/${result.id}`);
+      }
+    } catch (err) {
+      if (err.status === 409 || err.code === "COLLECTION_CONFLICT") {
+        setCreateCollectionError("A collection with this name already exists.");
+      } else {
+        setCreateCollectionError(err?.message || "Failed to create collection.");
+      }
+    } finally {
+      setIsSubmittingCollection(false);
+    }
+  };
 
   const menuButtonRef = useRef(null);
   const closeButtonRef = useRef(null);
@@ -220,6 +261,74 @@ export default function AppLayout() {
           </div>
         </div>
       ))}
+
+      {/* Collections section */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between px-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-stone-400">
+            Collections
+          </h2>
+          <button
+            type="button"
+            onClick={() => {
+              setCreateCollectionInput("");
+              setCreateCollectionError(null);
+              setShowCreateCollectionModal(true);
+            }}
+            className="flex h-5 items-center gap-1 rounded px-1.5 text-[11px] font-medium text-teal-700 hover:bg-teal-50"
+            aria-label="Create collection"
+            title="Create collection"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            <span>New</span>
+          </button>
+        </div>
+        <div className="space-y-0.5">
+          {collections.length === 0 ? (
+            <div className="px-3 py-1.5 text-xs text-stone-400 italic">
+              No collections yet
+            </div>
+          ) : (
+            collections.map((col) => (
+              <NavLink
+                key={col.id}
+                to={`/collections/${col.id}`}
+                onClick={onItemClick}
+                className={({ isActive }) =>
+                  `group flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive
+                      ? "bg-teal-50 text-teal-900 font-semibold"
+                      : "text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+                  }`
+                }
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <svg
+                    className="h-4 w-4 flex-shrink-0 text-stone-400 group-hover:text-teal-700 group-[.active]:text-teal-700"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"
+                    />
+                  </svg>
+                  <span className="truncate">{col.name}</span>
+                </div>
+                <span className="ml-2 text-xs text-stone-400 font-normal">
+                  {col.noteCount || 0}
+                </span>
+              </NavLink>
+            ))
+          )}
+        </div>
+      </div>
 
       {/* Trash navigation link */}
       <div className="pt-2 border-t border-stone-100">
@@ -443,6 +552,63 @@ export default function AppLayout() {
                 Discard changes and sign out
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Collection Modal */}
+      {showCreateCollectionModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="create-collection-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
+        >
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl border border-stone-200">
+            <h2 id="create-collection-modal-title" className="text-lg font-bold text-stone-900">
+              New Collection
+            </h2>
+            <form onSubmit={handleCreateCollectionSubmit} className="mt-4 space-y-4">
+              <div>
+                <label htmlFor="new-collection-name-input" className="block text-xs font-medium text-stone-700">
+                  Collection Name (1–80 characters)
+                </label>
+                <input
+                  id="new-collection-name-input"
+                  type="text"
+                  maxLength={80}
+                  autoFocus
+                  placeholder="e.g. Placement Prep, DSA, Project Ideas"
+                  value={createCollectionInput}
+                  onChange={(e) => setCreateCollectionInput(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+                />
+              </div>
+
+              {createCollectionError && (
+                <div role="alert" className="text-xs text-red-600">
+                  {createCollectionError}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  disabled={isSubmittingCollection}
+                  onClick={() => setShowCreateCollectionModal(false)}
+                  className="rounded-lg border border-stone-200 px-3.5 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingCollection || !createCollectionInput.trim()}
+                  className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-50"
+                >
+                  {isSubmittingCollection ? "Creating..." : "Create Collection"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth.js";
+import { useCollections } from "../context/useCollections.js";
 import { fetchNotes, createNote, pinNote, unpinNote } from "../services/notes.service.js";
 import { CANONICAL_EMPTY_DOC } from "../constants/editor.js";
 import LoadingState from "../components/LoadingState.jsx";
@@ -37,6 +38,7 @@ function formatTimestamp(isoString) {
  */
 export default function NotesPage() {
   const { getCsrfToken } = useAuth();
+  const { collections, refreshCollections } = useCollections();
   const navigate = useNavigate();
 
   const [notes, setNotes] = useState([]);
@@ -46,6 +48,7 @@ export default function NotesPage() {
 
   const [searchInput, setSearchInput] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
+  const [selectedCollectionId, setSelectedCollectionId] = useState("");
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -93,6 +96,7 @@ export default function NotesPage() {
     try {
       const data = await fetchNotes({
         q: activeQuery,
+        collectionId: selectedCollectionId || undefined,
         limit: PAGE_SIZE,
         offset,
         signal,
@@ -138,7 +142,7 @@ export default function NotesPage() {
         setIsLoading(false);
       }
     }
-  }, [activeQuery, offset]);
+  }, [activeQuery, selectedCollectionId, offset]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -170,8 +174,11 @@ export default function NotesPage() {
       const newNote = await createNote({
         title: "Untitled note",
         content: CANONICAL_EMPTY_DOC,
+        collectionId: selectedCollectionId || undefined,
         csrfToken,
       });
+
+      await refreshCollections();
 
       // Navigate to the newly created note editor
       navigate(`/notes/${newNote.id}`);
@@ -220,6 +227,9 @@ export default function NotesPage() {
   const renderNoteCard = (note) => {
     const isPinned = Boolean(note.pinned);
     const isActionInFlight = pinningId === note.id;
+    const noteCollection = note.collectionId
+      ? collections.find((c) => c.id === note.collectionId)
+      : null;
 
     return (
       <Link
@@ -259,6 +269,16 @@ export default function NotesPage() {
               </svg>
             </button>
           </div>
+          {noteCollection && (
+            <div className="mt-1">
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md">
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                </svg>
+                <span>{noteCollection.name}</span>
+              </span>
+            </div>
+          )}
           <p className="mt-2 text-sm text-stone-600 line-clamp-2 leading-relaxed min-h-[2.5rem]">
             {note.preview || <span className="italic text-stone-400">Empty note</span>}
           </p>
@@ -407,35 +427,62 @@ export default function NotesPage() {
         </div>
       )}
 
-      {/* Search Input Bar */}
-      <div className="relative">
-        <label htmlFor="notes-search" className="sr-only">
-          Search notes by title or content
-        </label>
-        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-stone-400">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-          </svg>
-        </div>
-        <input
-          id="notes-search"
-          type="search"
-          value={searchInput}
-          onChange={handleSearchChange}
-          placeholder="Search notes by title or content..."
-          className="w-full rounded-lg border border-stone-300 bg-white py-2.5 pl-10 pr-10 text-sm text-stone-900 placeholder-stone-400 shadow-2xs focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
-        />
-        {searchInput && (
-          <button
-            type="button"
-            onClick={handleClearSearch}
-            className="absolute inset-y-0 right-0 flex items-center pr-3 text-stone-400 hover:text-stone-600"
-            aria-label="Clear search query"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+      {/* Search Input Bar & Collection Filter */}
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch">
+        <div className="relative flex-1">
+          <label htmlFor="notes-search" className="sr-only">
+            Search notes by title or content
+          </label>
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-stone-400">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
             </svg>
-          </button>
+          </div>
+          <input
+            id="notes-search"
+            type="search"
+            value={searchInput}
+            onChange={handleSearchChange}
+            placeholder="Search notes by title or content..."
+            className="w-full rounded-lg border border-stone-300 bg-white py-2.5 pl-10 pr-10 text-sm text-stone-900 placeholder-stone-400 shadow-2xs focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+          />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-stone-400 hover:text-stone-600"
+              aria-label="Clear search query"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {collections.length > 0 && (
+          <div className="w-full sm:w-56">
+            <label htmlFor="collection-filter" className="sr-only">
+              Filter by collection
+            </label>
+            <select
+              id="collection-filter"
+              aria-label="Filter by collection"
+              value={selectedCollectionId}
+              onChange={(e) => {
+                setOffset(0);
+                setSelectedCollectionId(e.target.value);
+              }}
+              className="w-full rounded-lg border border-stone-300 bg-white py-2.5 px-3 text-sm text-stone-900 shadow-2xs focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+            >
+              <option value="">All collections</option>
+              {collections.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.noteCount || 0})
+                </option>
+              ))}
+            </select>
+          </div>
         )}
       </div>
 

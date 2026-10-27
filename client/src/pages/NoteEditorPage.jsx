@@ -8,6 +8,7 @@ import {
   UNSAFE_DataRouterContext,
 } from "react-router-dom";
 import { useAuth } from "../context/useAuth.js";
+import { useCollections } from "../context/useCollections.js";
 import {
   fetchNoteById,
   updateNote,
@@ -61,6 +62,7 @@ export default function NoteEditorPage() {
   const { noteId } = useParams();
   const navigate = useNavigate();
   const { getCsrfToken } = useAuth();
+  const { collections, refreshCollections } = useCollections();
   const outlet = useOutletContext();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -74,9 +76,10 @@ export default function NoteEditorPage() {
   const [updatedAt, setUpdatedAt] = useState("");
   const [isPinned, setIsPinned] = useState(false);
   const [isPinning, setIsPinning] = useState(false);
+  const [collectionId, setCollectionId] = useState(null);
 
   // Saved baseline for dirty state detection
-  const savedBaselineRef = useRef({ title: "", content: CANONICAL_EMPTY_DOC });
+  const savedBaselineRef = useRef({ title: "", content: CANONICAL_EMPTY_DOC, collectionId: null });
   const [isDirty, setIsDirty] = useState(false);
 
   // Editor instance reference
@@ -121,15 +124,16 @@ export default function NoteEditorPage() {
   }, [isDirty, isSaving, outlet]);
 
   // Deep comparison against confirmed saved baseline
-  const computeIsDirty = useCallback((curTitle, curContent) => {
+  const computeIsDirty = useCallback((curTitle, curContent, curCollectionId) => {
     const baseline = savedBaselineRef.current;
     if (!baseline) return false;
     const titleChanged = curTitle !== baseline.title;
+    const collectionChanged = (curCollectionId ?? null) !== (baseline.collectionId ?? null);
     const contentChanged = !deepEqual(
       normalizeEditorContent(curContent),
       normalizeEditorContent(baseline.content)
     );
-    return titleChanged || contentChanged;
+    return titleChanged || collectionChanged || contentChanged;
   }, []);
 
   // Load note from server
@@ -148,9 +152,11 @@ export default function NoteEditorPage() {
 
         const loadedTitle = data.title || "Untitled note";
         const loadedContent = normalizeEditorContent(data.content);
+        const loadedColId = data.collectionId || null;
 
         setTitle(loadedTitle);
         setContent(loadedContent);
+        setCollectionId(loadedColId);
         setExpectedVersion(data.version);
         setUpdatedAt(data.updatedAt);
         setIsPinned(Boolean(data.pinned));
@@ -158,6 +164,7 @@ export default function NoteEditorPage() {
         savedBaselineRef.current = {
           title: loadedTitle,
           content: loadedContent,
+          collectionId: loadedColId,
         };
 
         setIsDirty(false);
@@ -199,7 +206,7 @@ export default function NoteEditorPage() {
     if (isSaving || isTrashing) return;
     const newTitle = e.target.value;
     setTitle(newTitle);
-    const dirty = computeIsDirty(newTitle, content);
+    const dirty = computeIsDirty(newTitle, content, collectionId);
     setIsDirty(dirty);
     if (dirty) {
       if (saveStatus === "saved") setSaveStatus("unsaved");
@@ -212,7 +219,21 @@ export default function NoteEditorPage() {
   const handleContentChange = (newContent) => {
     if (isSaving || isTrashing) return;
     setContent(newContent);
-    const dirty = computeIsDirty(title, newContent);
+    const dirty = computeIsDirty(title, newContent, collectionId);
+    setIsDirty(dirty);
+    if (dirty) {
+      if (saveStatus === "saved") setSaveStatus("unsaved");
+    } else {
+      if (saveStatus === "unsaved") setSaveStatus("saved");
+    }
+  };
+
+  // Collection change handler
+  const handleCollectionChange = (e) => {
+    if (isSaving || isTrashing) return;
+    const newColId = e.target.value || null;
+    setCollectionId(newColId);
+    const dirty = computeIsDirty(title, content, newColId);
     setIsDirty(dirty);
     if (dirty) {
       if (saveStatus === "saved") setSaveStatus("unsaved");
@@ -245,6 +266,7 @@ export default function NoteEditorPage() {
         title,
         content,
         expectedVersion,
+        collectionId,
         csrfToken,
       });
 
@@ -252,10 +274,12 @@ export default function NoteEditorPage() {
 
       const updatedContent = normalizeEditorContent(updated.content);
       const updatedTitle = updated.title || "Untitled note";
+      const updatedColId = updated.collectionId || null;
 
       // Reconcile state to server canonical values
       setTitle(updatedTitle);
       setContent(updatedContent);
+      setCollectionId(updatedColId);
       setExpectedVersion(updated.version);
       setUpdatedAt(updated.updatedAt);
       if (typeof updated.pinned === "boolean") {
@@ -265,12 +289,15 @@ export default function NoteEditorPage() {
       savedBaselineRef.current = {
         title: updatedTitle,
         content: updatedContent,
+        collectionId: updatedColId,
       };
 
       setIsDirty(false);
       setSaveStatus("saved");
       setSaveError(null);
       setConflict(false);
+
+      await refreshCollections();
     } catch (err) {
       if (loadGenerationRef.current !== currentGen) return;
 
@@ -303,9 +330,11 @@ export default function NoteEditorPage() {
     conflict,
     title,
     content,
+    collectionId,
     expectedVersion,
     getCsrfToken,
     noteId,
+    refreshCollections,
   ]);
 
   // Pin/Unpin action
@@ -610,7 +639,29 @@ export default function NoteEditorPage() {
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Collection Selector */}
+          <div className="flex items-center gap-1.5">
+            <label htmlFor="note-collection-select" className="sr-only">
+              Assign collection
+            </label>
+            <select
+              id="note-collection-select"
+              aria-label="Assign collection"
+              disabled={isSaving || isTrashing}
+              value={collectionId || ""}
+              onChange={handleCollectionChange}
+              className="rounded-lg border border-stone-200 bg-white py-1.5 px-2.5 text-xs font-medium text-stone-700 shadow-2xs hover:bg-stone-50 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600 disabled:opacity-50"
+            >
+              <option value="">No collection</option>
+              {collections.map((col) => (
+                <option key={col.id} value={col.id}>
+                  {col.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Pin / Unpin Button */}
           <button
             type="button"

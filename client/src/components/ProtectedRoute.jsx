@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/useAuth.js";
+import { WorkspaceProvider } from "../context/WorkspaceContext.jsx";
 import { CollectionsProvider } from "../context/CollectionsContext.jsx";
 import { TagsProvider } from "../context/TagsContext.jsx";
 
@@ -96,8 +97,10 @@ export default function ProtectedRoute({ children }) {
   }
 
   return (
-    <CollectionsProvider>
-      <TagsProvider>{children}</TagsProvider>
-    </CollectionsProvider>
+    <WorkspaceProvider>
+      <CollectionsProvider>
+        <TagsProvider>{children}</TagsProvider>
+      </CollectionsProvider>
+    </WorkspaceProvider>
   );
 }

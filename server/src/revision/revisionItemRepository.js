@@ -118,6 +118,7 @@ function mapRevisionItemRow(row) {
   if (!row) return null;
   return {
     id: row.id,
+    workspaceId: row.workspace_id || null,
     title: row.title,
     details: row.details,
     subject: row.subject,
@@ -133,6 +134,7 @@ function mapRevisionItemRow(row) {
  */
 export async function createRevisionItem({
   userId,
+  workspaceId = null,
   title,
   details = null,
   subject = null,
@@ -148,17 +150,19 @@ export async function createRevisionItem({
   const query = `
     INSERT INTO revision_items (
       user_id,
+      workspace_id,
       title,
       details,
       subject,
       status,
       revised_at
-    ) VALUES ($1, $2, $3, $4, $5, $6)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
     RETURNING *;
   `;
 
   const values = [
     userId,
+    workspaceId || null,
     normalizedTitle,
     normalizedDetails,
     normalizedSubject,
@@ -175,6 +179,7 @@ export async function createRevisionItem({
  */
 export async function findRevisionItemsByUserId({
   userId,
+  workspaceId = null,
   status,
   subject,
   q = '',
@@ -184,6 +189,11 @@ export async function findRevisionItemsByUserId({
 }) {
   const conditions = ['user_id = $1', 'deleted_at IS NULL'];
   const values = [userId];
+
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
 
   if (status && REVISION_ITEM_LIMITS.ALLOWED_STATUSES.includes(status.toLowerCase())) {
     values.push(status.toLowerCase());
@@ -251,10 +261,18 @@ export async function findRevisionItemsByUserId({
 /**
  * Retrieves a single active revision item by ID.
  */
-export async function findRevisionItemByIdAndUserId({ id, userId, pool = getPool() }) {
+export async function findRevisionItemByIdAndUserId({ id, userId, workspaceId = null, pool = getPool() }) {
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL'];
+  const values = [id, userId];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
     SELECT
       id,
+      workspace_id,
       title,
       details,
       subject,
@@ -263,9 +281,9 @@ export async function findRevisionItemByIdAndUserId({ id, userId, pool = getPool
       created_at,
       updated_at
     FROM revision_items
-    WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL;
+    WHERE ${conditions.join(' AND ')};
   `;
-  const result = await pool.query(query, [id, userId]);
+  const result = await pool.query(query, values);
   if (result.rows.length === 0) {
     return null;
   }
@@ -278,13 +296,14 @@ export async function findRevisionItemByIdAndUserId({ id, userId, pool = getPool
 export async function updateRevisionItem({
   id,
   userId,
+  workspaceId = null,
   title,
   details,
   subject,
   status,
   pool = getPool(),
 }) {
-  const current = await findRevisionItemByIdAndUserId({ id, userId, pool });
+  const current = await findRevisionItemByIdAndUserId({ id, userId, workspaceId, pool });
   if (!current) {
     return null;
   }
@@ -328,10 +347,16 @@ export async function updateRevisionItem({
 
   setClauses.push('updated_at = now()');
 
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL'];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
     UPDATE revision_items
     SET ${setClauses.join(', ')}
-    WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+    WHERE ${conditions.join(' AND ')}
     RETURNING *;
   `;
 
@@ -345,18 +370,25 @@ export async function updateRevisionItem({
 /**
  * Sets revision item status directly ('pending' or 'revised').
  */
-export async function setRevisionItemStatus({ id, userId, status, pool = getPool() }) {
+export async function setRevisionItemStatus({ id, userId, workspaceId = null, status, pool = getPool() }) {
   const normalizedStatus = validateRevisionStatus(status);
   const revisedAtClause = normalizedStatus === 'revised' ? 'revised_at = now()' : 'revised_at = NULL';
+
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL'];
+  const values = [id, userId, normalizedStatus];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
 
   const query = `
     UPDATE revision_items
     SET status = $3, ${revisedAtClause}, updated_at = now()
-    WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+    WHERE ${conditions.join(' AND ')}
     RETURNING *;
   `;
 
-  const result = await pool.query(query, [id, userId, normalizedStatus]);
+  const result = await pool.query(query, values);
   if (result.rows.length === 0) {
     return null;
   }
@@ -366,14 +398,21 @@ export async function setRevisionItemStatus({ id, userId, status, pool = getPool
 /**
  * Soft deletes a revision item.
  */
-export async function softDeleteRevisionItem({ id, userId, pool = getPool() }) {
+export async function softDeleteRevisionItem({ id, userId, workspaceId = null, pool = getPool() }) {
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL'];
+  const values = [id, userId];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
     UPDATE revision_items
     SET deleted_at = now(), updated_at = now()
-    WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+    WHERE ${conditions.join(' AND ')}
     RETURNING id;
   `;
-  const result = await pool.query(query, [id, userId]);
+  const result = await pool.query(query, values);
   return (result.rowCount ?? 0) > 0;
 }
 

@@ -24,7 +24,8 @@ export function TagsProvider({ children }) {
       setError(null);
       try {
         const data = await fetchTags({ signal });
-        setTags(data || []);
+        const list = Array.isArray(data) ? data : Array.isArray(data?.tags) ? data.tags : [];
+        setTags(list);
       } catch (err) {
         if (err.name === "AbortError" || signal?.aborted) return;
         setError(err?.message || "Failed to load tags");

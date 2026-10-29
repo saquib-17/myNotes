@@ -1,5 +1,6 @@
 /**
  * Component displaying backend connection status with accessible states and retry action.
+ * Professional Developer Navy & Royal Blue aesthetic.
  */
 export default function ConnectionStatus({
   status,
@@ -15,14 +16,14 @@ export default function ConnectionStatus({
   return (
     <section
       aria-labelledby="connection-status-heading"
-      className="rounded-xl border border-stone-200 bg-white p-6 shadow-xs"
+      className="rounded-2xl border border-[#E6EAF2] bg-white p-5 shadow-xs"
     >
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-stone-100">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-[#E6EAF2]">
         <div>
-          <h2 id="connection-status-heading" className="text-base font-semibold text-stone-900">
+          <h2 id="connection-status-heading" className="text-base font-semibold text-[#111827]">
             Backend Service Status
           </h2>
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-[#667085]">
             Monitors connectivity between the Vite frontend proxy and Express API.
           </p>
         </div>
@@ -31,7 +32,7 @@ export default function ConnectionStatus({
           type="button"
           onClick={onRetry}
           disabled={isLoading}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white shadow-xs hover:bg-teal-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#365CF5] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-[#2848D8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A5B4FC] disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
           aria-label="Retry connection to backend server"
         >
           {isLoading ? (
@@ -62,31 +63,31 @@ export default function ConnectionStatus({
       {/* Accessible Live Region */}
       <div role="status" aria-live="polite" className="pt-4">
         {isLoading && (
-          <div className="flex items-center gap-3 rounded-lg bg-stone-50 p-3.5 border border-stone-200">
+          <div className="flex items-center gap-3 rounded-xl bg-[#F7F9FD] p-3.5 border border-[#E6EAF2]">
             <span className="h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" aria-hidden="true" />
-            <span className="text-sm font-medium text-stone-700">
-              State: Connecting to backend service at <code className="text-xs bg-stone-200/60 px-1 py-0.5 rounded text-stone-800">/api/health</code>...
+            <span className="text-sm font-medium text-[#374151]">
+              State: Connecting to backend service at <code className="text-xs bg-white px-1 py-0.5 rounded border border-[#E6EAF2] text-[#111827]">/api/health</code>...
             </span>
           </div>
         )}
 
         {isConnected && (
-          <div className="flex flex-col gap-2 rounded-lg bg-teal-50/70 p-4 border border-teal-200">
+          <div className="flex flex-col gap-2 rounded-xl bg-[#EEF3FF] p-4 border border-[#C7D7FE]">
             <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-teal-600" aria-hidden="true" />
-              <span className="text-sm font-semibold text-teal-900">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#365CF5]" aria-hidden="true" />
+              <span className="text-sm font-semibold text-[#111827]">
                 State: Connected — Backend API is online and responding.
               </span>
             </div>
-            <div className="text-xs text-teal-800 space-y-1 pl-4">
+            <div className="text-xs text-[#374151] space-y-1 pl-4">
               <p>
-                <span className="font-medium text-teal-950">Service identifier:</span> {data?.service}
+                <span className="font-medium text-[#111827]">Service identifier:</span> {data?.service}
               </p>
               <p>
-                <span className="font-medium text-teal-950">Health status:</span> {data?.status}
+                <span className="font-medium text-[#111827]">Health status:</span> {data?.status}
               </p>
               {lastChecked && (
-                <p className="text-teal-700">
+                <p className="text-[#2948D8]">
                   Last verified: {lastChecked.toLocaleTimeString()}
                 </p>
               )}

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAuth as defaultRequireAuth } from '../auth/requireAuth.js';
 import { requireCsrf, setNoCacheHeaders } from '../auth/csrf.js';
 import * as defaultDoubtRepo from '../doubts/doubtRepository.js';
+import { resolveWorkspaceId } from '../workspaces/workspaceResolution.js';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -19,6 +20,7 @@ function isValidUuid(id) {
  */
 export function createDoubtsRouter({
   doubtRepository = defaultDoubtRepo,
+  resolveWorkspace = resolveWorkspaceId,
   requireAuthMiddleware = defaultRequireAuth,
 } = {}) {
   const router = Router();
@@ -71,9 +73,11 @@ export function createDoubtsRouter({
         });
       }
       const parsedOffset = parseInt(offset, 10);
+      const workspaceId = await resolveWorkspace(req);
 
       const result = await doubtRepository.findDoubtsByUserId({
         userId: req.user.id,
+        workspaceId,
         status,
         subject,
         q,
@@ -108,7 +112,7 @@ export function createDoubtsRouter({
         });
       }
 
-      const allowedKeys = new Set(['question', 'details', 'subject', 'status', 'resolution']);
+      const allowedKeys = new Set(['question', 'details', 'subject', 'status', 'resolution', 'workspaceId']);
       for (const key of Object.keys(req.body)) {
         if (!allowedKeys.has(key)) {
           return res.status(400).json({
@@ -119,6 +123,7 @@ export function createDoubtsRouter({
       }
 
       const { question, details, subject, status, resolution } = req.body;
+      const workspaceId = await resolveWorkspace(req);
 
       if (question === undefined) {
         return res.status(400).json({
@@ -130,6 +135,7 @@ export function createDoubtsRouter({
       try {
         const created = await doubtRepository.createDoubt({
           userId: req.user.id,
+          workspaceId,
           question,
           details,
           subject,
@@ -164,9 +170,11 @@ export function createDoubtsRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const doubt = await doubtRepository.findDoubtByIdAndUserId({
         id,
         userId: req.user.id,
+        workspaceId,
       });
 
       if (!doubt) {
@@ -204,7 +212,7 @@ export function createDoubtsRouter({
         });
       }
 
-      const allowedKeys = new Set(['question', 'details', 'subject', 'status', 'resolution']);
+      const allowedKeys = new Set(['question', 'details', 'subject', 'status', 'resolution', 'workspaceId']);
       for (const key of Object.keys(req.body)) {
         if (!allowedKeys.has(key)) {
           return res.status(400).json({
@@ -215,11 +223,13 @@ export function createDoubtsRouter({
       }
 
       const { question, details, subject, status, resolution } = req.body;
+      const workspaceId = await resolveWorkspace(req);
 
       try {
         const updated = await doubtRepository.updateDoubt({
           id,
           userId: req.user.id,
+          workspaceId,
           question,
           details,
           subject,
@@ -268,10 +278,12 @@ export function createDoubtsRouter({
         }
       }
 
+      const workspaceId = await resolveWorkspace(req);
       try {
         const updated = await doubtRepository.setDoubtStatus({
           id,
           userId: req.user.id,
+          workspaceId,
           status: 'resolved',
           resolution,
         });
@@ -310,9 +322,11 @@ export function createDoubtsRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const updated = await doubtRepository.setDoubtStatus({
         id,
         userId: req.user.id,
+        workspaceId,
         status: 'open',
       });
 
@@ -344,9 +358,11 @@ export function createDoubtsRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const deleted = await doubtRepository.softDeleteDoubt({
         id,
         userId: req.user.id,
+        workspaceId,
       });
 
       if (!deleted) {

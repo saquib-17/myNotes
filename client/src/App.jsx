@@ -6,6 +6,7 @@ import {
   RouterProvider,
 } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext.jsx";
+import { ThemeProvider } from "./context/ThemeContext.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import AppLayout from "./layouts/AppLayout.jsx";
 import LoginWithSuccessNotice from "./components/LoginWithSuccessNotice.jsx";
@@ -20,6 +21,8 @@ import InboxPage from "./pages/InboxPage.jsx";
 import WorkspacesPage from "./pages/WorkspacesPage.jsx";
 import RevisionPage from "./pages/RevisionPage.jsx";
 import JournalPage from "./pages/JournalPage.jsx";
+import SearchPage from "./pages/SearchPage.jsx";
+import SettingsPage from "./pages/SettingsPage.jsx";
 import TrashPage from "./pages/TrashPage.jsx";
 import CollectionNotesPage from "./pages/CollectionNotesPage.jsx";
 import TagNotesPage from "./pages/TagNotesPage.jsx";
@@ -56,6 +59,8 @@ export function AppRoutes() {
         <Route path="workspaces" element={<WorkspacesPage />} />
         <Route path="revision" element={<RevisionPage />} />
         <Route path="journal" element={<JournalPage />} />
+        <Route path="search" element={<SearchPage />} />
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
@@ -72,17 +77,21 @@ export default function App({ router } = {}) {
 
   if (inRouter) {
     return (
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </ThemeProvider>
     );
   }
 
   const activeRouter = router || getAppRouter();
 
   return (
-    <AuthProvider>
-      <RouterProvider router={activeRouter} />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <RouterProvider router={activeRouter} />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

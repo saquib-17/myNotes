@@ -14,6 +14,10 @@ import documentsRoutes from './routes/documents.routes.js';
 import revisionItemsRoutes from './routes/revisionItems.routes.js';
 import doubtsRoutes from './routes/doubts.routes.js';
 import journalRoutes from './routes/journal.routes.js';
+import dashboardRoutes from './routes/dashboard.routes.js';
+import workspacesRoutes from './routes/workspaces.routes.js';
+import searchRoutes from './routes/search.routes.js';
+import profileRoutes from './routes/profile.routes.js';
 import { getSessionOptions } from './config/session.config.js';
 import { getSessionStore } from './auth/sessionStore.js';
 
@@ -48,6 +52,7 @@ function getDefaultSessionMiddleware() {
  * @param {import('express').Router} [options.revisionItemsRouter] - Injected revision items router
  * @param {import('express').Router} [options.doubtsRouter] - Injected doubts router
  * @param {import('express').Router} [options.journalRouter] - Injected journal router
+ * @param {import('express').Router} [options.dashboardRouter] - Injected dashboard router
  * @returns {express.Express}
  */
 export function createApp({
@@ -63,6 +68,10 @@ export function createApp({
   revisionItemsRouter,
   doubtsRouter,
   journalRouter,
+  dashboardRouter,
+  workspacesRouter,
+  searchRouter,
+  profileRouter,
 } = {}) {
   const app = express();
 
@@ -111,6 +120,10 @@ export function createApp({
     app.use('/api/revision-items', resolvedSessionMiddleware, revisionItemsRouter || revisionItemsRoutes);
     app.use('/api/doubts', resolvedSessionMiddleware, doubtsRouter || doubtsRoutes);
     app.use('/api/journal', resolvedSessionMiddleware, journalRouter || journalRoutes);
+    app.use('/api/dashboard', resolvedSessionMiddleware, dashboardRouter || dashboardRoutes);
+    app.use('/api/workspaces', resolvedSessionMiddleware, workspacesRouter || workspacesRoutes);
+    app.use('/api/search', resolvedSessionMiddleware, searchRouter || searchRoutes);
+    app.use('/api/profile', resolvedSessionMiddleware, profileRouter || profileRoutes);
   } else {
     app.use('/api/auth', authRouter || authRoutes);
     app.use('/api/notes', notesRouter || notesRoutes);
@@ -122,6 +135,10 @@ export function createApp({
     app.use('/api/revision-items', revisionItemsRouter || revisionItemsRoutes);
     app.use('/api/doubts', doubtsRouter || doubtsRoutes);
     app.use('/api/journal', journalRouter || journalRoutes);
+    app.use('/api/dashboard', dashboardRouter || dashboardRoutes);
+    app.use('/api/workspaces', workspacesRouter || workspacesRoutes);
+    app.use('/api/search', searchRouter || searchRoutes);
+    app.use('/api/profile', profileRouter || profileRoutes);
   }
 
   // Fallback for unknown API routes - returns structured JSON 404

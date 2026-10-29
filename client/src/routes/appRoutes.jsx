@@ -17,6 +17,8 @@ import InboxPage from "../pages/InboxPage.jsx";
 import WorkspacesPage from "../pages/WorkspacesPage.jsx";
 import RevisionPage from "../pages/RevisionPage.jsx";
 import JournalPage from "../pages/JournalPage.jsx";
+import SearchPage from "../pages/SearchPage.jsx";
+import SettingsPage from "../pages/SettingsPage.jsx";
 import TrashPage from "../pages/TrashPage.jsx";
 import CollectionNotesPage from "../pages/CollectionNotesPage.jsx";
 import TagNotesPage from "../pages/TagNotesPage.jsx";
@@ -55,6 +57,8 @@ export const appRoutes = [
       { path: "workspaces", element: <WorkspacesPage /> },
       { path: "revision", element: <RevisionPage /> },
       { path: "journal", element: <JournalPage /> },
+      { path: "search", element: <SearchPage /> },
+      { path: "settings", element: <SettingsPage /> },
     ],
   },
   {

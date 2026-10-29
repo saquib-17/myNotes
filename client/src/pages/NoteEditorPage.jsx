@@ -59,6 +59,7 @@ function SafeRouterBlocker({ shouldBlock, onBlockerStateChange }) {
  * NoteEditorPage - Full rich-text editor view for an individual note.
  * Features explicit manual saving, read-only freeze during in-flight saves,
  * calm predictable save status, version-conflict handling, and router navigation blocking.
+ * Styled with Midnight Indigo tokens and dark mode support.
  */
 export default function NoteEditorPage() {
   const { noteId } = useParams();
@@ -451,7 +452,6 @@ export default function NoteEditorPage() {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        // Ignore during active IME composition
         if (e.isComposing) return;
         handleSave();
       }
@@ -514,7 +514,6 @@ export default function NoteEditorPage() {
         csrfToken,
       });
 
-      // Clear dirty state to prevent navigation warning and redirect cleanly
       setIsDirty(false);
       setShowTrashModal(false);
       navigate("/notes");
@@ -527,7 +526,7 @@ export default function NoteEditorPage() {
       } else {
         setTrashError(
           err?.message ||
-            "Could not move note to trash. Your content remains intact."
+          "Could not move note to trash. Your content remains intact."
         );
       }
     }
@@ -602,14 +601,14 @@ export default function NoteEditorPage() {
             />
           </svg>
         </div>
-        <h1 className="text-xl font-bold text-stone-900">Note Not Found</h1>
-        <p className="text-sm text-stone-600">
+        <h1 className="text-xl font-bold text-slate-900">Note Not Found</h1>
+        <p className="text-sm text-slate-600">
           This note does not exist, belongs to another user, or has been moved to trash.
         </p>
         <div className="pt-2">
           <Link
             to="/notes"
-            className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#365CF5] px-4 py-2 text-sm font-semibold text-white hover:bg-[#2848D8] transition-colors"
           >
             Return to Notes
           </Link>
@@ -629,7 +628,7 @@ export default function NoteEditorPage() {
         <div className="mt-4 text-center">
           <Link
             to="/notes"
-            className="text-sm font-medium text-teal-700 hover:text-teal-900"
+            className="text-sm font-medium text-[#365CF5] hover:text-[#2848D8]"
           >
             &larr; Back to notes list
           </Link>
@@ -639,7 +638,7 @@ export default function NoteEditorPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-16">
+    <div className="space-y-4 sm:space-y-5 max-w-5xl mx-auto pb-12">
       {/* Safe router navigation blocker bridge */}
       <SafeRouterBlocker
         shouldBlock={shouldBlockNav}
@@ -647,16 +646,16 @@ export default function NoteEditorPage() {
       />
 
       {/* Top Action Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-stone-200">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2.5 border-b border-[#E5E7EB]">
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={handleBackToNotes}
             aria-label="Back to notes"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-600 hover:text-stone-900 py-1.5 px-2.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#344054] hover:text-[#182230] py-1.5 px-2.5 rounded-lg border border-[#DCE3EF] bg-white hover:bg-[#F4F6FB] transition-colors shadow-2xs"
           >
             <svg
-              className="h-4 w-4"
+              className="h-3.5 w-3.5"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -674,7 +673,7 @@ export default function NoteEditorPage() {
           {/* Status Badge */}
           <div className="flex items-center gap-1.5 text-xs">
             {isSaving ? (
-              <span className="inline-flex items-center gap-1 text-teal-700 font-medium">
+              <span className="inline-flex items-center gap-1 text-[#365CF5] font-medium">
                 <svg
                   className="h-3.5 w-3.5 animate-spin"
                   viewBox="0 0 24 24"
@@ -702,13 +701,13 @@ export default function NoteEditorPage() {
                 Version conflict
               </span>
             ) : saveStatus === "error" ? (
-              <span className="inline-flex items-center gap-1 text-red-700 font-medium">
-                <span className="h-2 w-2 rounded-full bg-red-500" />
+              <span className="inline-flex items-center gap-1 text-rose-600 font-medium">
+                <span className="h-2 w-2 rounded-full bg-rose-500" />
                 Save failed
               </span>
             ) : saveStatus === "expired" ? (
-              <span className="inline-flex items-center gap-1 text-red-700 font-medium">
-                <span className="h-2 w-2 rounded-full bg-red-500" />
+              <span className="inline-flex items-center gap-1 text-rose-600 font-medium">
+                <span className="h-2 w-2 rounded-full bg-rose-500" />
                 Session expired
               </span>
             ) : isDirty ? (
@@ -717,7 +716,7 @@ export default function NoteEditorPage() {
                 Unsaved changes
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-stone-500 font-medium">
+              <span className="inline-flex items-center gap-1 text-[#667085] font-medium">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
                 Saved (v{expectedVersion})
               </span>
@@ -738,7 +737,7 @@ export default function NoteEditorPage() {
               disabled={isSaving || isTrashing}
               value={collectionId || ""}
               onChange={handleCollectionChange}
-              className="rounded-lg border border-stone-200 bg-white py-1.5 px-2.5 text-xs font-medium text-stone-700 shadow-2xs hover:bg-stone-50 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600 disabled:opacity-50"
+              className="rounded-lg border border-[#DCE3EF] bg-white py-1.5 px-2.5 text-xs font-medium text-[#374151] shadow-2xs hover:bg-[#F4F6FB] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40 disabled:opacity-50"
             >
               <option value="">No collection</option>
               {collections.map((col) => (
@@ -756,14 +755,13 @@ export default function NoteEditorPage() {
             onClick={handleTogglePin}
             aria-label={isPinned ? "Unpin note" : "Pin note"}
             aria-pressed={isPinned}
-            className={`inline-flex items-center gap-1.5 text-xs font-semibold py-1.5 px-3 rounded-lg border transition-colors ${
-              isPinned
+            className={`inline-flex items-center gap-1.5 text-xs font-semibold py-1.5 px-3 rounded-lg border transition-colors shadow-2xs ${isPinned
                 ? "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
-                : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-900"
-            }`}
+                : "border-[#DCE3EF] bg-white text-[#374151] hover:bg-[#F4F6FB] hover:text-[#111827]"
+              }`}
           >
             <svg
-              className={`h-3.5 w-3.5 ${isPinned ? "fill-amber-500 text-amber-700" : "fill-none text-stone-400"}`}
+              className={`h-3.5 w-3.5 ${isPinned ? "fill-amber-500 text-amber-600" : "fill-none text-[#8A94A6]"}`}
               viewBox="0 0 24 24"
               stroke="currentColor"
               strokeWidth="2"
@@ -783,7 +781,7 @@ export default function NoteEditorPage() {
             disabled={isSaving || isTrashing}
             onClick={() => setShowTrashModal(true)}
             aria-label="Trash this note"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 py-1.5 px-3 rounded-lg border border-red-200 bg-white hover:bg-red-50 disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600 hover:text-rose-700 py-1.5 px-3 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 disabled:opacity-40 transition-colors shadow-2xs"
           >
             <svg
               className="h-3.5 w-3.5"
@@ -806,11 +804,10 @@ export default function NoteEditorPage() {
             type="button"
             disabled={isSaving || !isDirty || conflict}
             onClick={handleSave}
-            className={`inline-flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-1.5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-              isSaving || !isDirty || conflict
+            className={`inline-flex items-center gap-2 rounded-xl bg-[#365CF5] px-4 py-1.5 text-xs font-semibold text-white shadow-2xs transition-colors hover:bg-[#2848D8] focus:outline-none focus:ring-2 focus:ring-[#A5B4FC]/40 ${isSaving || !isDirty || conflict
                 ? "opacity-50 cursor-not-allowed"
                 : "cursor-pointer"
-            }`}
+              }`}
           >
             {isSaving ? "Saving..." : "Save note"}
           </button>
@@ -853,7 +850,7 @@ export default function NoteEditorPage() {
               Copy local draft
             </button>
             {copyFeedback && (
-              <span className="text-xs font-medium text-emerald-700">
+              <span className="text-xs font-medium text-emerald-600">
                 {copyFeedback}
               </span>
             )}
@@ -861,7 +858,7 @@ export default function NoteEditorPage() {
             <button
               type="button"
               onClick={() => setShowReloadConfirm(true)}
-              className="inline-flex items-center gap-1.5 rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+              className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
             >
               Discard and reload latest
             </button>
@@ -873,24 +870,24 @@ export default function NoteEditorPage() {
       {saveStatus === "error" && saveError && (
         <div
           role="alert"
-          className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 flex items-start justify-between gap-3"
+          className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 flex items-start justify-between gap-3"
         >
           <div>
             <p className="font-semibold">Save failed</p>
-            <p className="mt-0.5 text-red-700">{saveError}</p>
+            <p className="mt-0.5 text-rose-700">{saveError}</p>
           </div>
           <div className="flex items-center gap-3 flex-shrink-0">
             <button
               type="button"
               onClick={handleSave}
-              className="text-xs font-semibold text-red-700 hover:text-red-900 underline"
+              className="text-xs font-semibold text-rose-700 hover:text-rose-900 underline"
             >
               Retry
             </button>
             <button
               type="button"
               onClick={() => setSaveError(null)}
-              className="text-xs text-stone-500 hover:text-stone-700"
+              className="text-xs text-slate-500 hover:text-slate-700"
             >
               Dismiss
             </button>
@@ -902,11 +899,11 @@ export default function NoteEditorPage() {
       {saveStatus === "expired" && (
         <div
           role="alert"
-          className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 space-y-3"
+          className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 space-y-3"
         >
           <div>
             <p className="font-semibold">Session Expired</p>
-            <p className="mt-0.5 text-red-700">
+            <p className="mt-0.5 text-rose-700">
               Your session has expired. Your current edits are preserved in memory.
               Please copy your draft below before signing back in.
             </p>
@@ -915,18 +912,18 @@ export default function NoteEditorPage() {
             <button
               type="button"
               onClick={handleCopyDraft}
-              className="inline-flex items-center gap-1.5 rounded-md bg-red-100 border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-900 hover:bg-red-200"
+              className="inline-flex items-center gap-1.5 rounded-md bg-rose-100 border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-900 hover:bg-rose-200"
             >
               Copy local draft
             </button>
             {copyFeedback && (
-              <span className="text-xs font-medium text-emerald-700">
+              <span className="text-xs font-medium text-emerald-600">
                 {copyFeedback}
               </span>
             )}
             <Link
               to="/login"
-              className="inline-flex items-center gap-1.5 rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+              className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
             >
               Go to sign in
             </Link>
@@ -947,9 +944,9 @@ export default function NoteEditorPage() {
           onChange={handleTitleChange}
           maxLength={NOTE_LIMITS.MAX_TITLE_LENGTH}
           placeholder="Untitled note"
-          className="w-full text-2xl sm:text-3xl font-bold tracking-tight text-stone-900 bg-transparent border-0 border-b border-transparent focus:border-teal-500 focus:outline-none focus:ring-0 pb-1 placeholder-stone-300 disabled:opacity-60"
+          className="w-full text-xl sm:text-2xl font-bold tracking-tight text-[#111827] bg-transparent border-0 border-b border-transparent focus:border-[#365CF5] focus:outline-none focus:ring-0 pb-1 placeholder-[#8A94A6] disabled:opacity-60"
         />
-        <div className="flex items-center justify-between text-xs text-stone-400 mt-1">
+        <div className="flex items-center justify-between text-xs text-[#8A94A6] mt-1">
           <span>
             {title.length} / {NOTE_LIMITS.MAX_TITLE_LENGTH} characters
           </span>
@@ -964,11 +961,11 @@ export default function NoteEditorPage() {
         <label htmlFor="note-tag-input" className="sr-only">
           Note Tags
         </label>
-        <div className="flex flex-wrap items-center gap-1.5 min-h-[34px] rounded-lg border border-stone-200 bg-stone-50/50 p-1.5 focus-within:border-teal-600 focus-within:bg-white focus-within:ring-1 focus-within:ring-teal-600">
+        <div className="flex flex-wrap items-center gap-1.5 min-h-[34px] rounded-lg border border-[#DCE3EF] bg-[#F7F9FD] p-1.5 focus-within:border-[#365CF5] focus-within:bg-white focus-within:ring-1 focus-within:ring-[#A5B4FC]/40">
           {noteTags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center gap-1 rounded-md bg-stone-100 border border-stone-200 px-2 py-0.5 text-xs font-medium text-stone-700"
+              className="inline-flex items-center gap-1 rounded-md bg-white border border-[#E6EAF2] px-2 py-0.5 text-xs font-medium text-[#374151]"
             >
               <span>#{tag}</span>
               <button
@@ -976,7 +973,7 @@ export default function NoteEditorPage() {
                 disabled={isSaving || isTrashing}
                 onClick={() => handleRemoveTag(tag)}
                 aria-label={`Remove tag ${tag}`}
-                className="text-stone-400 hover:text-stone-700 disabled:opacity-40"
+                className="text-[#8A94A6] hover:text-[#182230] disabled:opacity-40"
               >
                 ×
               </button>
@@ -1002,12 +999,12 @@ export default function NoteEditorPage() {
                 }}
                 onKeyDown={handleTagInputKeyDown}
                 placeholder={noteTags.length === 0 ? "Add tags (press Enter or comma)..." : "Add tag..."}
-                className="w-full bg-transparent px-1.5 py-0.5 text-xs text-stone-900 placeholder-stone-400 focus:outline-none disabled:opacity-60"
+                className="w-full bg-transparent px-1.5 py-0.5 text-xs text-[#182230] placeholder-[#8A94A6] focus:outline-none disabled:opacity-60"
               />
 
               {/* Suggestions Dropdown */}
               {showSuggestions && tagInput.trim() && (
-                <div className="absolute left-0 top-full z-10 mt-1 max-h-40 w-52 overflow-y-auto rounded-lg border border-stone-200 bg-white p-1 shadow-lg">
+                <div className="absolute left-0 top-full z-10 mt-1 max-h-40 w-52 overflow-y-auto rounded-lg border border-[#E5E7EB] bg-white p-1 shadow-lg">
                   {allExistingTags
                     .filter(
                       (t) =>
@@ -1023,10 +1020,10 @@ export default function NoteEditorPage() {
                           e.preventDefault();
                           handleAddTag(sug.name);
                         }}
-                        className="flex w-full items-center justify-between rounded px-2 py-1 text-xs text-stone-700 hover:bg-teal-50 hover:text-teal-900"
+                        className="flex w-full items-center justify-between rounded px-2 py-1 text-xs text-[#344054] hover:bg-[#EEF3FF] hover:text-[#2948D8]"
                       >
                         <span>#{sug.name}</span>
-                        <span className="text-3xs text-stone-400">{sug.noteCount || 0}</span>
+                        <span className="text-3xs text-[#8A94A6]">{sug.noteCount || 0}</span>
                       </button>
                     ))}
                   {!allExistingTags.some(
@@ -1038,7 +1035,7 @@ export default function NoteEditorPage() {
                         e.preventDefault();
                         handleAddTag(tagInput.trim());
                       }}
-                      className="flex w-full items-center gap-1 rounded px-2 py-1 text-xs text-teal-700 font-medium hover:bg-teal-50"
+                      className="flex w-full items-center gap-1 rounded px-2 py-1 text-xs text-[#365CF5] font-medium hover:bg-[#EEF3FF]"
                     >
                       <span>Create</span>
                       <span className="font-semibold">#{tagInput.trim()}</span>
@@ -1051,7 +1048,7 @@ export default function NoteEditorPage() {
         </div>
 
         {tagInputError && (
-          <p className="text-xs text-red-600">{tagInputError}</p>
+          <p className="text-xs text-rose-600">{tagInputError}</p>
         )}
       </div>
 
@@ -1065,156 +1062,164 @@ export default function NoteEditorPage() {
         }}
       />
 
-      {/* Copy Fallback Modal */}
-      {showCopyFallback && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl space-y-4">
-            <h2 className="text-base font-semibold text-stone-900">
-              Copy Draft Text
-            </h2>
-            <p className="text-xs text-stone-500">
-              Select and copy your local draft text manually below:
-            </p>
-            <textarea
-              readOnly
-              rows={8}
-              value={`Title: ${title}\n\n${editorInstanceRef.current?.getText() || ""}`}
-              className="w-full rounded-lg border border-stone-200 bg-stone-50 p-3 font-mono text-xs text-stone-900 focus:outline-none"
-              onClick={(e) => e.target.select()}
-            />
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowCopyFallback(false)}
-                className="rounded-lg bg-stone-800 px-4 py-2 text-xs font-semibold text-white hover:bg-stone-900"
-              >
-                Close
-              </button>
-            </div>
-          </div>
+{/* Copy Fallback Modal */ }
+{
+  showCopyFallback && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
+      <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl border border-slate-200 space-y-4">
+        <h2 className="text-base font-semibold text-slate-900">
+          Copy Draft Text
+        </h2>
+        <p className="text-xs text-slate-500">
+          Select and copy your local draft text manually below:
+        </p>
+        <textarea
+          readOnly
+          rows={8}
+          value={`Title: ${title}\n\n${editorInstanceRef.current?.getText() || ""}`}
+          className="w-full rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-900 focus:outline-none"
+          onClick={(e) => e.target.select()}
+        />
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setShowCopyFallback(false)}
+            className="rounded-lg bg-slate-800 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-900"
+          >
+            Close
+          </button>
         </div>
-      )}
-
-      {/* Discard & Reload Confirmation Modal */}
-      {showReloadConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl space-y-4">
-            <h2 className="text-base font-semibold text-stone-900">
-              Discard unsaved edits?
-            </h2>
-            <p className="text-sm text-stone-600">
-              Are you sure you want to discard your local unsaved edits and reload the
-              latest version from the server? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowReloadConfirm(false)}
-                className="rounded-lg border border-stone-300 bg-white px-3.5 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmReload}
-                className="rounded-lg bg-red-600 px-4 py-2 text-xs font-semibold text-white hover:bg-red-700"
-              >
-                Discard and Reload
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Unsaved Changes Navigation Guard Modal */}
-      {isNavBlocked && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl space-y-4">
-            <div className="flex items-center gap-3 text-amber-600">
-              <svg
-                className="h-6 w-6 flex-shrink-0"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-                />
-              </svg>
-              <h2 className="text-base font-semibold text-stone-900">
-                Unsaved changes
-              </h2>
-            </div>
-            <p className="text-sm text-stone-600">
-              {isSaving
-                ? "A save is currently in progress. Please wait for the save to complete before leaving, or stay on this page to preserve your edits."
-                : "You have unsaved changes in this note. If you leave now, your changes will be discarded."}
-            </p>
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={handleStayOnPage}
-                className="rounded-lg border border-stone-300 bg-white px-3.5 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50"
-              >
-                Stay
-              </button>
-              <button
-                type="button"
-                disabled={isSaving}
-                onClick={handleDiscardAndLeave}
-                className="rounded-lg bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
-              >
-                Discard changes and leave
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Trash Note Confirmation Modal */}
-      {showTrashModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl space-y-4">
-            <h2 className="text-base font-semibold text-stone-900">
-              Move note to trash?
-            </h2>
-            <p className="text-sm text-stone-600">
-              Are you sure you want to move this note to the trash?
-            </p>
-            {isDirty && (
-              <p className="text-xs font-medium text-amber-700 bg-amber-50 p-2.5 rounded border border-amber-200">
-                Warning: You have unsaved changes that will be lost.
-              </p>
-            )}
-            {trashError && (
-              <p className="text-xs font-medium text-red-600 bg-red-50 p-2.5 rounded border border-red-200">
-                {trashError}
-              </p>
-            )}
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                disabled={isTrashing}
-                onClick={() => setShowTrashModal(false)}
-                className="rounded-lg border border-stone-300 bg-white px-3.5 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-40"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isTrashing}
-                onClick={handleConfirmTrash}
-                className="rounded-lg bg-red-600 px-4 py-2 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-40"
-              >
-                {isTrashing ? "Moving to trash..." : "Move to trash"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
+  )
+}
+
+{/* Discard & Reload Confirmation Modal */ }
+{
+  showReloadConfirm && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
+      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl border border-slate-200 space-y-4">
+        <h2 className="text-base font-semibold text-slate-900">
+          Discard unsaved edits?
+        </h2>
+        <p className="text-sm text-slate-600">
+          Are you sure you want to discard your local unsaved edits and reload the
+          latest version from the server? This action cannot be undone.
+        </p>
+        <div className="flex justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onClick={() => setShowReloadConfirm(false)}
+            className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirmReload}
+            className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 transition-colors"
+          >
+            Discard and Reload
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+{/* Unsaved Changes Navigation Guard Modal */ }
+{
+  isNavBlocked && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
+      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl border border-slate-200 space-y-4">
+        <div className="flex items-center gap-3 text-amber-500">
+          <svg
+            className="h-6 w-6 flex-shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+            />
+          </svg>
+          <h2 className="text-base font-semibold text-slate-900">
+            Unsaved changes
+          </h2>
+        </div>
+        <p className="text-sm text-slate-600">
+          {isSaving
+            ? "A save is currently in progress. Please wait for the save to complete before leaving, or stay on this page to preserve your edits."
+            : "You have unsaved changes in this note. If you leave now, your changes will be discarded."}
+        </p>
+        <div className="flex justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onClick={handleStayOnPage}
+            className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Stay
+          </button>
+          <button
+            type="button"
+            disabled={isSaving}
+            onClick={handleDiscardAndLeave}
+            className="rounded-lg bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50 transition-colors"
+          >
+            Discard changes and leave
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+{/* Trash Note Confirmation Modal */ }
+{
+  showTrashModal && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
+      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl border border-slate-200 space-y-4">
+        <h2 className="text-base font-semibold text-slate-900">
+          Move note to trash?
+        </h2>
+        <p className="text-sm text-slate-600">
+          Are you sure you want to move this note to the trash?
+        </p>
+        {isDirty && (
+          <p className="text-xs font-medium text-amber-700 bg-amber-50 p-2.5 rounded border border-amber-200">
+            Warning: You have unsaved changes that will be lost.
+          </p>
+        )}
+        {trashError && (
+          <p className="text-xs font-medium text-rose-600 bg-rose-50 p-2.5 rounded border border-rose-200">
+            {trashError}
+          </p>
+        )}
+        <div className="flex justify-end gap-3 pt-2">
+          <button
+            type="button"
+            disabled={isTrashing}
+            onClick={() => setShowTrashModal(false)}
+            className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={isTrashing}
+            onClick={handleConfirmTrash}
+            className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-40 transition-colors"
+          >
+            {isTrashing ? "Moving to trash..." : "Move to trash"}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+    </div >
   );
 }

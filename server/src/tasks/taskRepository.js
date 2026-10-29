@@ -1,15 +1,15 @@
 import { getPool } from '../db/pool.js';
 
 export const TASK_LIMITS = {
+  MIN_TITLE_LENGTH: 1,
   MAX_TITLE_LENGTH: 200,
   MAX_DETAILS_LENGTH: 5000,
-  ALLOWED_STATUSES: ['pending', 'completed'],
   ALLOWED_PRIORITIES: ['none', 'low', 'medium', 'high'],
+  ALLOWED_STATUSES: ['pending', 'completed'],
 };
 
 /**
  * Validates and normalizes task title.
- * Must be non-empty string between 1 and 200 characters.
  */
 export function validateAndNormalizeTaskTitle(title) {
   if (typeof title !== 'string') {
@@ -18,13 +18,15 @@ export function validateAndNormalizeTaskTitle(title) {
     throw err;
   }
   const trimmed = title.trim();
-  if (trimmed.length === 0) {
-    const err = new Error('Task title cannot be empty.');
+  if (trimmed.length < TASK_LIMITS.MIN_TITLE_LENGTH) {
+    const err = new Error('Task title is required and cannot be empty.');
     err.status = 400;
     throw err;
   }
   if (trimmed.length > TASK_LIMITS.MAX_TITLE_LENGTH) {
-    const err = new Error(`Task title cannot exceed ${TASK_LIMITS.MAX_TITLE_LENGTH} characters.`);
+    const err = new Error(
+      `Task title cannot exceed ${TASK_LIMITS.MAX_TITLE_LENGTH} characters.`
+    );
     err.status = 400;
     throw err;
   }
@@ -32,8 +34,7 @@ export function validateAndNormalizeTaskTitle(title) {
 }
 
 /**
- * Validates and normalizes task details.
- * Optional; must not exceed 5000 characters.
+ * Validates and normalizes optional task details.
  */
 export function validateAndNormalizeTaskDetails(details) {
   if (details === undefined || details === null) {
@@ -49,7 +50,9 @@ export function validateAndNormalizeTaskDetails(details) {
     return null;
   }
   if (trimmed.length > TASK_LIMITS.MAX_DETAILS_LENGTH) {
-    const err = new Error(`Task details cannot exceed ${TASK_LIMITS.MAX_DETAILS_LENGTH} characters.`);
+    const err = new Error(
+      `Task details cannot exceed ${TASK_LIMITS.MAX_DETAILS_LENGTH} characters.`
+    );
     err.status = 400;
     throw err;
   }
@@ -58,39 +61,40 @@ export function validateAndNormalizeTaskDetails(details) {
 
 /**
  * Validates task priority.
- * Must be one of 'none', 'low', 'medium', 'high'.
  */
 export function validateTaskPriority(priority) {
   if (priority === undefined || priority === null) {
     return 'none';
   }
-  if (typeof priority !== 'string' || !TASK_LIMITS.ALLOWED_PRIORITIES.includes(priority.toLowerCase())) {
-    const err = new Error(`Task priority must be one of: ${TASK_LIMITS.ALLOWED_PRIORITIES.join(', ')}.`);
+  if (typeof priority !== 'string' || !TASK_LIMITS.ALLOWED_PRIORITIES.includes(priority.trim().toLowerCase())) {
+    const err = new Error(
+      `Task priority must be one of: ${TASK_LIMITS.ALLOWED_PRIORITIES.join(', ')}.`
+    );
     err.status = 400;
     throw err;
   }
-  return priority.toLowerCase();
+  return priority.trim().toLowerCase();
 }
 
 /**
  * Validates task status.
- * Must be one of 'pending', 'completed'.
  */
 export function validateTaskStatus(status) {
   if (status === undefined || status === null) {
     return 'pending';
   }
-  if (typeof status !== 'string' || !TASK_LIMITS.ALLOWED_STATUSES.includes(status.toLowerCase())) {
-    const err = new Error(`Task status must be one of: ${TASK_LIMITS.ALLOWED_STATUSES.join(', ')}.`);
+  if (typeof status !== 'string' || !TASK_LIMITS.ALLOWED_STATUSES.includes(status.trim().toLowerCase())) {
+    const err = new Error(
+      `Task status must be one of: ${TASK_LIMITS.ALLOWED_STATUSES.join(', ')}.`
+    );
     err.status = 400;
     throw err;
   }
-  return status.toLowerCase();
+  return status.trim().toLowerCase();
 }
 
 /**
- * Validates task due date.
- * If provided, must match YYYY-MM-DD format and be a valid calendar date.
+ * Validates optional task due date (YYYY-MM-DD format).
  */
 export function validateTaskDueDate(dueDate) {
   if (dueDate === undefined || dueDate === null || dueDate === '') {
@@ -127,6 +131,7 @@ function escapeLikeWildcards(text) {
  */
 export async function createTask({
   userId,
+  workspaceId = null,
   title,
   details = null,
   status = 'pending',
@@ -142,10 +147,11 @@ export async function createTask({
   const completedAt = normalizedStatus === 'completed' ? new Date().toISOString() : null;
 
   const query = `
-    INSERT INTO tasks (user_id, title, details, status, priority, due_date, completed_at)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    INSERT INTO tasks (user_id, workspace_id, title, details, status, priority, due_date, completed_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     RETURNING
       id,
+      workspace_id AS "workspaceId",
       title,
       details,
       status,
@@ -158,6 +164,7 @@ export async function createTask({
 
   const values = [
     userId,
+    workspaceId || null,
     normalizedTitle,
     normalizedDetails,
     normalizedStatus,
@@ -175,6 +182,7 @@ export async function createTask({
  */
 export async function findTasksByUserId({
   userId,
+  workspaceId = null,
   status,
   priority,
   q = '',
@@ -184,6 +192,11 @@ export async function findTasksByUserId({
 }) {
   const conditions = ['user_id = $1', 'deleted_at IS NULL'];
   const values = [userId];
+
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
 
   if (status && TASK_LIMITS.ALLOWED_STATUSES.includes(status.toLowerCase())) {
     values.push(status.toLowerCase());
@@ -215,6 +228,7 @@ export async function findTasksByUserId({
   const selectQuery = `
     SELECT
       id,
+      workspace_id AS "workspaceId",
       title,
       details,
       status,
@@ -255,12 +269,20 @@ export async function findTasksByUserId({
 }
 
 /**
- * Finds an owned, active task by id and user_id.
+ * Finds an owned, active task by id, user_id, and optional workspaceId.
  */
-export async function findTaskByIdAndUserId({ id, userId, pool = getPool() }) {
+export async function findTaskByIdAndUserId({ id, userId, workspaceId = null, pool = getPool() }) {
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL'];
+  const values = [id, userId];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
     SELECT
       id,
+      workspace_id AS "workspaceId",
       title,
       details,
       status,
@@ -270,10 +292,10 @@ export async function findTaskByIdAndUserId({ id, userId, pool = getPool() }) {
       created_at AS "createdAt",
       updated_at AS "updatedAt"
     FROM tasks
-    WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL;
+    WHERE ${conditions.join(' AND ')};
   `;
 
-  const result = await pool.query(query, [id, userId]);
+  const result = await pool.query(query, values);
   return result.rows[0] || null;
 }
 
@@ -283,6 +305,7 @@ export async function findTaskByIdAndUserId({ id, userId, pool = getPool() }) {
 export async function updateTask({
   id,
   userId,
+  workspaceId = null,
   title,
   details,
   status,
@@ -290,7 +313,7 @@ export async function updateTask({
   dueDate,
   pool = getPool(),
 }) {
-  const existing = await findTaskByIdAndUserId({ id, userId, pool });
+  const existing = await findTaskByIdAndUserId({ id, userId, workspaceId, pool });
   if (!existing) {
     return { notFound: true };
   }
@@ -312,29 +335,7 @@ export async function updateTask({
     }
   }
 
-  const updateQuery = `
-    UPDATE tasks
-    SET
-      title = $1,
-      details = $2,
-      status = $3,
-      priority = $4,
-      due_date = $5,
-      completed_at = $6,
-      updated_at = now()
-    WHERE id = $7 AND user_id = $8 AND deleted_at IS NULL
-    RETURNING
-      id,
-      title,
-      details,
-      status,
-      priority,
-      to_char(due_date, 'YYYY-MM-DD') AS "dueDate",
-      completed_at AS "completedAt",
-      created_at AS "createdAt",
-      updated_at AS "updatedAt";
-  `;
-
+  const conditions = ['id = $7', 'user_id = $8', 'deleted_at IS NULL'];
   const values = [
     finalTitle,
     finalDetails,
@@ -345,6 +346,35 @@ export async function updateTask({
     id,
     userId,
   ];
+
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
+  const updateQuery = `
+    UPDATE tasks
+    SET
+      title = $1,
+      details = $2,
+      status = $3,
+      priority = $4,
+      due_date = $5,
+      completed_at = $6,
+      updated_at = now()
+    WHERE ${conditions.join(' AND ')}
+    RETURNING
+      id,
+      workspace_id AS "workspaceId",
+      title,
+      details,
+      status,
+      priority,
+      to_char(due_date, 'YYYY-MM-DD') AS "dueDate",
+      completed_at AS "completedAt",
+      created_at AS "createdAt",
+      updated_at AS "updatedAt";
+  `;
 
   const result = await pool.query(updateQuery, values);
   if (result.rowCount === 1) {
@@ -357,9 +387,17 @@ export async function updateTask({
 /**
  * Sets task status to completed or pending (convenience method).
  */
-export async function setTaskStatus({ id, userId, status, pool = getPool() }) {
+export async function setTaskStatus({ id, userId, workspaceId = null, status, pool = getPool() }) {
   const normalizedStatus = validateTaskStatus(status);
   const completedAtExpr = normalizedStatus === 'completed' ? 'now()' : 'NULL';
+
+  const conditions = ['id = $2', 'user_id = $3', 'deleted_at IS NULL'];
+  const values = [normalizedStatus, id, userId];
+
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
 
   const query = `
     UPDATE tasks
@@ -367,9 +405,10 @@ export async function setTaskStatus({ id, userId, status, pool = getPool() }) {
       status = $1,
       completed_at = ${completedAtExpr},
       updated_at = now()
-    WHERE id = $2 AND user_id = $3 AND deleted_at IS NULL
+    WHERE ${conditions.join(' AND ')}
     RETURNING
       id,
+      workspace_id AS "workspaceId",
       title,
       details,
       status,
@@ -380,7 +419,7 @@ export async function setTaskStatus({ id, userId, status, pool = getPool() }) {
       updated_at AS "updatedAt";
   `;
 
-  const result = await pool.query(query, [normalizedStatus, id, userId]);
+  const result = await pool.query(query, values);
   if (result.rowCount === 1) {
     return { task: result.rows[0] };
   }
@@ -391,17 +430,25 @@ export async function setTaskStatus({ id, userId, status, pool = getPool() }) {
 /**
  * Soft deletes an owned task. Never physically deletes task rows.
  */
-export async function softDeleteTask({ id, userId, pool = getPool() }) {
+export async function softDeleteTask({ id, userId, workspaceId = null, pool = getPool() }) {
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL'];
+  const values = [id, userId];
+
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
     UPDATE tasks
     SET
       deleted_at = now(),
       updated_at = now()
-    WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+    WHERE ${conditions.join(' AND ')}
     RETURNING id;
   `;
 
-  const result = await pool.query(query, [id, userId]);
+  const result = await pool.query(query, values);
   if (result.rowCount === 1) {
     return { success: true, deleted: true };
   }

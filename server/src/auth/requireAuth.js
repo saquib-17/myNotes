@@ -31,6 +31,8 @@ export function createRequireAuth({ getUserById = findUserById } = {}) {
       req.user = {
         id: user.id,
         email: user.email,
+        name: user.displayName || user.name || null,
+        displayName: user.displayName || user.name || null,
         createdAt: user.createdAt,
       };
 

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAuth as defaultRequireAuth } from '../auth/requireAuth.js';
 import { requireCsrf, setNoCacheHeaders } from '../auth/csrf.js';
 import * as defaultQuestionRepo from '../questions/questionRepository.js';
+import { resolveWorkspaceId } from '../workspaces/workspaceResolution.js';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -19,6 +20,7 @@ function isValidUuid(id) {
  */
 export function createQuestionsRouter({
   questionRepository = defaultQuestionRepo,
+  resolveWorkspace = resolveWorkspaceId,
   requireAuthMiddleware = defaultRequireAuth,
 } = {}) {
   const router = Router();
@@ -95,9 +97,11 @@ export function createQuestionsRouter({
         });
       }
       const parsedOffset = parseInt(offset, 10);
+      const workspaceId = await resolveWorkspace(req);
 
       const result = await questionRepository.findQuestionsByUserId({
         userId: req.user.id,
+        workspaceId,
         type,
         difficulty,
         status,
@@ -143,6 +147,7 @@ export function createQuestionsRouter({
         'topic',
         'options',
         'correctOptionIndex',
+        'workspaceId',
       ]);
 
       for (const key of Object.keys(req.body)) {
@@ -165,6 +170,7 @@ export function createQuestionsRouter({
         options,
         correctOptionIndex,
       } = req.body;
+      const workspaceId = await resolveWorkspace(req);
 
       if (type === undefined) {
         return res.status(400).json({
@@ -183,6 +189,7 @@ export function createQuestionsRouter({
       try {
         const created = await questionRepository.createQuestion({
           userId: req.user.id,
+          workspaceId,
           type,
           question,
           answer,
@@ -221,9 +228,11 @@ export function createQuestionsRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const question = await questionRepository.findQuestionByIdAndUserId({
         id,
         userId: req.user.id,
+        workspaceId,
       });
 
       if (!question) {
@@ -271,6 +280,7 @@ export function createQuestionsRouter({
         'topic',
         'options',
         'correctOptionIndex',
+        'workspaceId',
       ]);
 
       const bodyKeys = Object.keys(req.body);
@@ -301,11 +311,13 @@ export function createQuestionsRouter({
         options,
         correctOptionIndex,
       } = req.body;
+      const workspaceId = await resolveWorkspace(req);
 
       try {
         const result = await questionRepository.updateQuestion({
           id,
           userId: req.user.id,
+          workspaceId,
           type,
           question,
           answer,
@@ -358,10 +370,12 @@ export function createQuestionsRouter({
         }
       }
 
+      const workspaceId = await resolveWorkspace(req);
       try {
         const outcome = await questionRepository.recordPractice({
           id,
           userId: req.user.id,
+          workspaceId,
           result,
         });
 
@@ -423,10 +437,12 @@ export function createQuestionsRouter({
         }
       }
 
+      const workspaceId = await resolveWorkspace(req);
       try {
         const outcome = await questionRepository.updateQuestionStatus({
           id,
           userId: req.user.id,
+          workspaceId,
           status,
         });
 
@@ -464,9 +480,11 @@ export function createQuestionsRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const result = await questionRepository.softDeleteQuestion({
         id,
         userId: req.user.id,
+        workspaceId,
       });
 
       if (result.notFound) {

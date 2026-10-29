@@ -7,6 +7,7 @@ import { normalizeEditorContent } from "../../constants/editor.js";
 /**
  * TiptapEditor component.
  * Integrates Tiptap rich-text editor with explicit manual-save support.
+ * Midnight Indigo styled for light and dark themes.
  *
  * @param {object} props
  * @param {object} props.initialContent - Server note content JSON
@@ -35,7 +36,7 @@ export default function TiptapEditor({
     editorProps: {
       attributes: {
         class:
-          "prose max-w-none focus:outline-none min-h-[320px] p-4 text-stone-900 leading-relaxed font-sans",
+          "prose max-w-none focus:outline-none min-h-[360px] p-4 sm:p-5 text-sm sm:text-base text-slate-900 leading-relaxed font-sans",
         role: "textbox",
         "aria-label": "Note content",
         "aria-multiline": "true",
@@ -66,7 +67,7 @@ export default function TiptapEditor({
   }, [editor, editable]);
 
   return (
-    <div className="flex flex-col border border-stone-200 rounded-lg bg-white shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-teal-500">
+    <div className="flex flex-col border border-[#E6EAF2] rounded-2xl bg-white shadow-2xs overflow-hidden focus-within:ring-2 focus-within:ring-[#A5B4FC]/40 focus-within:border-[#365CF5] transition-colors">
       <EditorToolbar editor={editor} disabled={!editable} />
       <div className="relative cursor-text flex-1">
         <EditorContent editor={editor} />

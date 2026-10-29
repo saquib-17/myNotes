@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAuth as defaultRequireAuth } from '../auth/requireAuth.js';
 import { requireCsrf, setNoCacheHeaders } from '../auth/csrf.js';
 import * as defaultRevisionRepo from '../revision/revisionItemRepository.js';
+import { resolveWorkspaceId } from '../workspaces/workspaceResolution.js';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -19,6 +20,7 @@ function isValidUuid(id) {
  */
 export function createRevisionItemsRouter({
   revisionItemRepository = defaultRevisionRepo,
+  resolveWorkspace = resolveWorkspaceId,
   requireAuthMiddleware = defaultRequireAuth,
 } = {}) {
   const router = Router();
@@ -71,9 +73,11 @@ export function createRevisionItemsRouter({
         });
       }
       const parsedOffset = parseInt(offset, 10);
+      const workspaceId = await resolveWorkspace(req);
 
       const result = await revisionItemRepository.findRevisionItemsByUserId({
         userId: req.user.id,
+        workspaceId,
         status,
         subject,
         q,
@@ -108,7 +112,7 @@ export function createRevisionItemsRouter({
         });
       }
 
-      const allowedKeys = new Set(['title', 'details', 'subject', 'status']);
+      const allowedKeys = new Set(['title', 'details', 'subject', 'status', 'workspaceId']);
       for (const key of Object.keys(req.body)) {
         if (!allowedKeys.has(key)) {
           return res.status(400).json({
@@ -119,6 +123,7 @@ export function createRevisionItemsRouter({
       }
 
       const { title, details, subject, status } = req.body;
+      const workspaceId = await resolveWorkspace(req);
 
       if (title === undefined) {
         return res.status(400).json({
@@ -130,6 +135,7 @@ export function createRevisionItemsRouter({
       try {
         const created = await revisionItemRepository.createRevisionItem({
           userId: req.user.id,
+          workspaceId,
           title,
           details,
           subject,
@@ -163,9 +169,11 @@ export function createRevisionItemsRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const item = await revisionItemRepository.findRevisionItemByIdAndUserId({
         id,
         userId: req.user.id,
+        workspaceId,
       });
 
       if (!item) {
@@ -203,7 +211,7 @@ export function createRevisionItemsRouter({
         });
       }
 
-      const allowedKeys = new Set(['title', 'details', 'subject', 'status']);
+      const allowedKeys = new Set(['title', 'details', 'subject', 'status', 'workspaceId']);
       for (const key of Object.keys(req.body)) {
         if (!allowedKeys.has(key)) {
           return res.status(400).json({
@@ -214,11 +222,13 @@ export function createRevisionItemsRouter({
       }
 
       const { title, details, subject, status } = req.body;
+      const workspaceId = await resolveWorkspace(req);
 
       try {
         const updated = await revisionItemRepository.updateRevisionItem({
           id,
           userId: req.user.id,
+          workspaceId,
           title,
           details,
           subject,
@@ -259,9 +269,11 @@ export function createRevisionItemsRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const updated = await revisionItemRepository.setRevisionItemStatus({
         id,
         userId: req.user.id,
+        workspaceId,
         status: 'revised',
       });
 
@@ -293,9 +305,11 @@ export function createRevisionItemsRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const updated = await revisionItemRepository.setRevisionItemStatus({
         id,
         userId: req.user.id,
+        workspaceId,
         status: 'pending',
       });
 
@@ -327,9 +341,11 @@ export function createRevisionItemsRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const deleted = await revisionItemRepository.softDeleteRevisionItem({
         id,
         userId: req.user.id,
+        workspaceId,
       });
 
       if (!deleted) {

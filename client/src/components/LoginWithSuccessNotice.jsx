@@ -5,6 +5,7 @@ import LoginPage from "../pages/LoginPage.jsx";
 /**
  * LoginWithSuccessNotice wraps LoginPage and displays a transient success
  * banner when the user arrives via a successful registration redirect.
+ * Styled with Midnight Indigo tokens for light and dark modes.
  */
 export default function LoginWithSuccessNotice() {
   const location = useLocation();
@@ -24,10 +25,10 @@ export default function LoginWithSuccessNotice() {
         <div
           role="status"
           aria-live="polite"
-          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 rounded-xl border border-teal-200 bg-teal-50 px-5 py-3 text-sm font-medium text-teal-900 shadow-md"
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 rounded-2xl border border-[#C7D7FE] bg-[#EEF3FF] px-5 py-3 text-sm font-medium text-[#111827] shadow-md backdrop-blur-xs"
         >
           <svg
-            className="h-4 w-4 text-teal-600 flex-shrink-0"
+            className="h-4 w-4 text-[#365CF5] flex-shrink-0"
             viewBox="0 0 20 20"
             fill="currentColor"
             aria-hidden="true"
@@ -45,4 +46,3 @@ export default function LoginWithSuccessNotice() {
     </>
   );
 }
-

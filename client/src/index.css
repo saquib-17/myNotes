@@ -1,8 +1,70 @@
 @import "tailwindcss";
 
+/* Safeguard: Single light theme. Disables Tailwind v4 media-query dark variant evaluation */
+@custom-variant dark (&:where([data-never-match-dark]));
+
+@theme {
+  /* Modern Professional Reference Design System: Clean Light & Royal Blue */
+
+  /* Neutral Workspace Foundation */
+  --color-slate-50: #f4f6fb;    /* Main background: #F4F6FB */
+  --color-slate-100: #f7f9fd;   /* Secondary surface: #F7F9FD */
+  --color-slate-200: #e6eaf2;   /* Card / panel borders: #E6EAF2 */
+  --color-slate-300: #dce3ef;   /* Input borders: #DCE3EF */
+  --color-slate-400: #8a94a6;   /* Muted text: #8A94A6 */
+  --color-slate-500: #667085;   /* Secondary text: #667085 */
+  --color-slate-600: #4b5565;   /* Intermediate text */
+  --color-slate-700: #374151;   /* Secondary text dark */
+  --color-slate-800: #1f2937;   /* Deep charcoal */
+  --color-slate-900: #111827;   /* Primary text: #111827 */
+  --color-slate-950: #0b0f17;
+
+  /* Royal Blue Primary Actions & Accents */
+  --color-blue-50: #eef3ff;     /* Subtle blue surface: #EEF3FF */
+  --color-blue-100: #e2e8ff;    /* Active navigation background: #E2E8FF */
+  --color-blue-200: #c7d7fe;
+  --color-blue-300: #a5b4fc;    /* Focus ring: #A5B4FC */
+  --color-blue-400: #60a5fa;
+  --color-blue-500: #365cf5;    /* Primary accent: #365CF5 */
+  --color-blue-600: #365cf5;    /* Primary button: #365CF5 */
+  --color-blue-700: #2848d8;    /* Primary hover: #2848D8 */
+  --color-blue-800: #2948d8;    /* Active nav text: #2948D8 */
+  --color-blue-900: #1e3a8a;
+  --color-blue-950: #172554;
+
+  /* Indigo Accents */
+  --color-indigo-50: #eef1ff;   /* Subtle accent background: #EEF1FF */
+  --color-indigo-100: #e0e7ff;
+  --color-indigo-200: #c7d2fe;
+  --color-indigo-300: #a5b4fc;
+  --color-indigo-400: #818cf8;
+  --color-indigo-500: #6554d9;   /* Secondary accent: #6554D9 */
+  --color-indigo-600: #365cf5;
+  --color-indigo-700: #2848d8;
+  --color-indigo-800: #2948d8;
+  --color-indigo-900: #1e1b4b;
+  --color-indigo-950: #0f172a;
+
+  /* Semantic State Colors */
+  --color-emerald-50: #f0fdf4;
+  --color-emerald-200: #bbf7d0;
+  --color-emerald-700: #16805d;  /* Success: #16805D */
+  --color-emerald-800: #14532d;
+
+  --color-amber-50: #fffbeb;
+  --color-amber-200: #fde68a;
+  --color-amber-700: #b7791f;   /* Warning: #B7791F */
+  --color-amber-800: #92400e;
+
+  --color-rose-50: #fef2f2;
+  --color-rose-200: #fecaca;
+  --color-rose-700: #d14343;    /* Error: #D14343 */
+  --color-rose-800: #991b1b;
+}
+
 /* Base accessibility focus outlines */
 :focus-visible {
-  outline: 2px solid #0f766e;
+  outline: 2px solid #a5b4fc;
   outline-offset: 2px;
 }
 
@@ -12,99 +74,112 @@
 }
 
 .ProseMirror h1 {
-  font-size: 1.5rem;
-  line-height: 2rem;
+  font-size: 1.375rem;
+  line-height: 1.875rem;
   font-weight: 700;
   margin-top: 1rem;
-  margin-bottom: 0.5rem;
-  color: #1c1917;
+  margin-bottom: 0.375rem;
+  color: #111827;
 }
 
 .ProseMirror h2 {
-  font-size: 1.25rem;
-  line-height: 1.75rem;
+  font-size: 1.1875rem;
+  line-height: 1.625rem;
   font-weight: 700;
   margin-top: 0.875rem;
-  margin-bottom: 0.375rem;
-  color: #1c1917;
+  margin-bottom: 0.25rem;
+  color: #111827;
 }
 
 .ProseMirror h3 {
-  font-size: 1.125rem;
+  font-size: 1.0625rem;
   line-height: 1.5rem;
   font-weight: 600;
   margin-top: 0.75rem;
   margin-bottom: 0.25rem;
-  color: #292524;
+  color: #111827;
 }
 
 .ProseMirror p {
-  margin-bottom: 0.75rem;
-  line-height: 1.625;
+  margin-bottom: 0.625rem;
+  line-height: 1.6;
+  color: #111827;
 }
 
 .ProseMirror ul {
   list-style-type: disc;
   padding-left: 1.25rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.625rem;
+  color: #111827;
 }
 
 .ProseMirror ol {
   list-style-type: decimal;
   padding-left: 1.25rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.625rem;
+  color: #111827;
 }
 
 .ProseMirror li {
   margin-bottom: 0.25rem;
+  line-height: 1.6;
 }
 
 .ProseMirror blockquote {
-  border-left: 4px solid #d6d3d1;
+  border-left: 3px solid #365cf5;
   padding-left: 1rem;
-  padding-top: 0.25rem;
-  padding-bottom: 0.25rem;
-  font-style: italic;
+  margin-left: 0;
+  margin-right: 0;
   margin-top: 0.75rem;
   margin-bottom: 0.75rem;
-  color: #44403c;
-  background-color: rgba(250, 250, 249, 0.6);
+  color: #667085;
+  font-style: italic;
+  background-color: #f7f9fd;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
   border-radius: 0 0.375rem 0.375rem 0;
 }
 
+.ProseMirror code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.85em;
+  background-color: #eef3ff;
+  color: #2848d8;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  border: 1px solid #dce3ef;
+}
+
 .ProseMirror pre {
-  background-color: #1c1917;
-  color: #f5f5f4;
+  background-color: #f7f9fd;
+  color: #111827;
+  padding: 0.875rem 1rem;
   border-radius: 0.5rem;
-  padding: 0.75rem 1rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
+  border: 1px solid #e6eaf2;
   overflow-x: auto;
   margin-top: 0.75rem;
   margin-bottom: 0.75rem;
-}
-
-.ProseMirror code {
-  background-color: #f5f5f4;
-  color: #1c1917;
-  border-radius: 0.25rem;
-  padding: 0.125rem 0.375rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.8125rem;
 }
 
 .ProseMirror pre code {
   background-color: transparent;
   color: inherit;
   padding: 0;
-  font-size: inherit;
+  border: none;
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 .ProseMirror hr {
-  border: 0;
-  border-top: 1px solid #e7e5e4;
-  margin-top: 1rem;
-  margin-bottom: 1rem;
+  border: none;
+  border-top: 1px solid #e6eaf2;
+  margin: 1.5rem 0;
 }
 
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: #8a94a6;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}

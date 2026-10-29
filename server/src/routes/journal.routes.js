@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAuth as defaultRequireAuth } from '../auth/requireAuth.js';
 import { requireCsrf, setNoCacheHeaders } from '../auth/csrf.js';
 import * as defaultJournalRepo from '../journal/journalRepository.js';
+import { resolveWorkspaceId } from '../workspaces/workspaceResolution.js';
 
 /**
  * Creates the journal router with configurable dependencies for isolated testing.
@@ -13,6 +14,7 @@ import * as defaultJournalRepo from '../journal/journalRepository.js';
  */
 export function createJournalRouter({
   journalRepository = defaultJournalRepo,
+  resolveWorkspace = resolveWorkspaceId,
   requireAuthMiddleware = defaultRequireAuth,
 } = {}) {
   const router = Router();
@@ -83,8 +85,11 @@ export function createJournalRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
+
       const result = await journalRepository.findJournalEntriesByUserId({
         userId: req.user.id,
+        workspaceId,
         from,
         to,
         q: typeof q === 'string' ? q : undefined,
@@ -114,8 +119,10 @@ export function createJournalRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const entry = await journalRepository.findJournalEntryByDateAndUserId({
         userId: req.user.id,
+        workspaceId,
         entryDate: date,
       });
 
@@ -160,8 +167,10 @@ export function createJournalRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const result = await journalRepository.upsertJournalEntry({
         userId: req.user.id,
+        workspaceId,
         entryDate: date,
         content: validContent,
       });
@@ -192,8 +201,10 @@ export function createJournalRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const deleted = await journalRepository.softDeleteJournalEntry({
         userId: req.user.id,
+        workspaceId,
         entryDate: date,
       });
 

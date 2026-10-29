@@ -125,8 +125,8 @@ export default function QuestionsPage() {
         const rawList = Array.isArray(data.questions)
           ? data.questions
           : Array.isArray(data.items)
-          ? data.items
-          : [];
+            ? data.items
+            : [];
 
         const totalCount =
           typeof data.total === "number" ? data.total : offset + rawList.length;
@@ -435,26 +435,26 @@ export default function QuestionsPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5">
       {/* Top Banner Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-[#E6EAF2] pb-2.5">
         <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-800 border border-teal-200">
-              <span className="h-1.5 w-1.5 rounded-full bg-teal-600" aria-hidden="true" />
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EEF3FF] px-2.5 py-0.5 text-xs font-semibold text-[#2948D8] border border-[#C7D7FE]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#365CF5]" aria-hidden="true" />
               Total: {total}
             </span>
-            <span className="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-700">
+            <span className="inline-flex items-center rounded-full bg-[#F4F6FB] border border-[#E6EAF2] px-2 py-0.5 text-xs font-medium text-[#374151]">
               Unlearned: {unlearnedCount}
             </span>
-            <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+            <span className="inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700">
               Learning: {learningCount}
             </span>
-            <span className="inline-flex items-center rounded-full bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-800">
+            <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
               Mastered: {masteredCount}
             </span>
           </div>
-          <p className="mt-1 text-xs text-stone-500">
+          <p className="mt-1 text-xs text-[#667085]">
             Collect important questions and track your understanding.
           </p>
         </div>
@@ -463,9 +463,9 @@ export default function QuestionsPage() {
           <button
             type="button"
             onClick={() => handleStartPractice()}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3.5 py-2 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[#DCE3EF] bg-white px-3.5 py-1.5 text-xs font-semibold text-[#374151] shadow-2xs hover:bg-[#F4F6FB] transition-colors"
           >
-            <svg className="h-4 w-4 text-teal-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-3.5 w-3.5 text-[#365CF5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -475,9 +475,9 @@ export default function QuestionsPage() {
           <button
             type="button"
             onClick={handleOpenCreate}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-teal-800 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-teal-700 focus-visible:outline-2 focus-visible:outline-teal-800 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[#365CF5] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-[#2848D8] focus-visible:outline-2 focus-visible:outline-[#A5B4FC] transition-colors cursor-pointer"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
             New Question
@@ -503,7 +503,7 @@ export default function QuestionsPage() {
       )}
 
       {/* Filters and Search Bar */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-stone-200 shadow-2xs">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 bg-white p-2.5 rounded-xl border border-slate-200/90 shadow-2xs">
         {/* Filters Grid */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Type Filter */}
@@ -514,7 +514,7 @@ export default function QuestionsPage() {
               setOffset(0);
             }}
             aria-label="Filter by question type"
-            className="rounded-xl border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+            className="rounded-xl border border-[#DCE3EF] bg-white px-2.5 py-1.5 text-xs font-medium text-[#374151] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40"
           >
             <option value="all">All Types</option>
             <option value="SHORT_ANSWER">Short Answer</option>
@@ -530,7 +530,7 @@ export default function QuestionsPage() {
               setOffset(0);
             }}
             aria-label="Filter by difficulty"
-            className="rounded-xl border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+            className="rounded-xl border border-[#DCE3EF] bg-white px-2.5 py-1.5 text-xs font-medium text-[#374151] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40"
           >
             <option value="all">All Difficulties</option>
             <option value="easy">Easy</option>
@@ -546,7 +546,7 @@ export default function QuestionsPage() {
               setOffset(0);
             }}
             aria-label="Filter by status"
-            className="rounded-xl border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+            className="rounded-xl border border-[#DCE3EF] bg-white px-2.5 py-1.5 text-xs font-medium text-[#374151] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40"
           >
             <option value="all">All Statuses</option>
             <option value="unlearned">Unlearned</option>
@@ -564,22 +564,22 @@ export default function QuestionsPage() {
             }}
             placeholder="Filter topic..."
             aria-label="Filter by topic"
-            className="w-28 sm:w-36 rounded-xl border border-stone-300 px-2.5 py-1.5 text-xs text-stone-900 placeholder-stone-400 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+            className="w-28 sm:w-36 rounded-xl border border-[#DCE3EF] bg-white px-2.5 py-1.5 text-xs text-[#111827] placeholder-[#8A94A6] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40"
           />
         </div>
 
         {/* Search Input */}
-        <div className="relative w-full lg:w-64">
+        <div className="relative w-full lg:w-60">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search questions..."
             aria-label="Search questions"
-            className="w-full rounded-xl border border-stone-300 pl-8 pr-7 py-1.5 text-xs text-stone-900 placeholder-stone-400 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+            className="w-full rounded-xl border border-[#DCE3EF] bg-white pl-8 pr-7 py-1.5 text-xs text-[#111827] placeholder-[#8A94A6] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40"
           />
           <svg
-            className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-stone-400"
+            className="absolute left-2.5 top-2 h-3.5 w-3.5 text-[#8A94A6]"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -591,7 +591,7 @@ export default function QuestionsPage() {
               type="button"
               onClick={() => setSearchQuery("")}
               aria-label="Clear search"
-              className="absolute right-2 top-2 text-stone-400 hover:text-stone-600"
+              className="absolute right-2 top-1.5 text-[#8A94A6] hover:text-[#182230]"
             >
               ✕
             </button>
@@ -601,12 +601,12 @@ export default function QuestionsPage() {
 
       {/* Main List Area */}
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-12 text-stone-400">
-          <svg className="h-8 w-8 animate-spin text-teal-700 mb-3" fill="none" viewBox="0 0 24 24">
+        <div className="flex flex-col items-center justify-center py-12 text-[#8A94A6]">
+          <svg className="h-8 w-8 animate-spin text-[#365CF5] mb-3" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
           </svg>
-          <p className="text-sm font-medium">Loading questions...</p>
+          <p className="text-sm font-medium text-[#667085]">Loading questions...</p>
         </div>
       ) : error ? (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center">
@@ -614,7 +614,7 @@ export default function QuestionsPage() {
           <button
             type="button"
             onClick={() => loadQuestions()}
-            className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700"
+            className="rounded-xl bg-rose-600 hover:bg-rose-700 px-4 py-2 text-xs font-semibold text-white transition-colors"
           >
             Retry
           </button>
@@ -648,64 +648,62 @@ export default function QuestionsPage() {
             return (
               <div
                 key={qItem.id}
-                className="group rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 shadow-2xs hover:border-stone-300 transition-colors"
+                className="group rounded-xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-2xs hover:border-slate-300 transition-colors"
               >
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                   {/* Left: Badges & Question */}
                   <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {/* Type Badge */}
-                      <span className="inline-flex items-center rounded-md bg-stone-100 border border-stone-200 px-2 py-0.5 text-2xs font-semibold text-stone-700">
+                      <span className="inline-flex items-center rounded-md bg-slate-100 border border-slate-200 px-2 py-0.5 text-2xs font-semibold text-slate-700">
                         {qItem.type === "SHORT_ANSWER"
                           ? "Short Answer"
                           : qItem.type === "MCQ"
-                          ? "MCQ"
-                          : "Coding"}
+                            ? "MCQ"
+                            : "Coding"}
                       </span>
 
                       {/* Difficulty Badge */}
                       <span
-                        className={`inline-flex items-center rounded-md px-2 py-0.5 text-2xs font-semibold border ${
-                          qItem.difficulty === "easy"
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : qItem.difficulty === "hard"
+                        className={`inline-flex items-center rounded-md px-2 py-0.5 text-2xs font-semibold border ${qItem.difficulty === "easy"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : qItem.difficulty === "hard"
                             ? "bg-rose-50 text-rose-700 border-rose-200"
                             : "bg-amber-50 text-amber-700 border-amber-200"
-                        }`}
+                          }`}
                       >
                         {qItem.difficulty.charAt(0).toUpperCase() + qItem.difficulty.slice(1)}
                       </span>
 
                       {/* Status Badge */}
                       <span
-                        className={`inline-flex items-center rounded-md px-2 py-0.5 text-2xs font-semibold border ${
-                          qItem.status === "mastered"
-                            ? "bg-teal-50 text-teal-800 border-teal-200"
-                            : qItem.status === "learning"
-                            ? "bg-blue-50 text-blue-700 border-blue-200"
-                            : "bg-stone-100 text-stone-600 border-stone-200"
-                        }`}
+                        className={`inline-flex items-center rounded-md px-2 py-0.5 text-2xs font-semibold border ${qItem.status === "mastered"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : qItem.status === "learning"
+                            ? "bg-sky-50 text-sky-700 border-sky-200"
+                            : "bg-slate-100 text-slate-600 border-slate-200"
+                          }`}
                       >
                         {qItem.status.charAt(0).toUpperCase() + qItem.status.slice(1)}
                       </span>
 
                       {/* Topic Badge */}
                       {qItem.topic && (
-                        <span className="inline-flex items-center rounded-md bg-stone-50 border border-stone-200 px-2 py-0.5 text-2xs font-medium text-stone-600">
+                        <span className="inline-flex items-center rounded-md bg-slate-50 border border-slate-200 px-2 py-0.5 text-2xs font-medium text-slate-600">
                           #{qItem.topic}
                         </span>
                       )}
 
                       {/* Last Practiced Time */}
                       {qItem.lastPracticedAt && (
-                        <span className="text-3xs text-stone-400">
+                        <span className="text-3xs text-slate-400">
                           Practiced: {formatTimestamp(qItem.lastPracticedAt)}
                         </span>
                       )}
                     </div>
 
                     {/* Question text */}
-                    <p className="text-sm font-semibold text-stone-900 leading-snug whitespace-pre-wrap break-words">
+                    <p className="text-sm font-semibold text-slate-900 leading-snug whitespace-pre-wrap break-words">
                       {qItem.question}
                     </p>
 
@@ -715,24 +713,22 @@ export default function QuestionsPage() {
                         {qItem.options.map((opt, idx) => (
                           <div
                             key={idx}
-                            className={`flex items-center gap-2 text-xs ${
-                              idx === qItem.correctOptionIndex
-                                ? "text-teal-800 font-medium"
-                                : "text-stone-500"
-                            }`}
+                            className={`flex items-center gap-2 text-xs ${idx === qItem.correctOptionIndex
+                              ? "text-[#2848D8] font-medium"
+                              : "text-slate-500"
+                              }`}
                           >
                             <span
-                              className={`h-4 w-4 rounded-full flex items-center justify-center text-3xs border ${
-                                idx === qItem.correctOptionIndex
-                                  ? "border-teal-600 bg-teal-50 text-teal-800 font-bold"
-                                  : "border-stone-300 text-stone-400"
-                              }`}
+                              className={`h-4 w-4 rounded-full flex items-center justify-center text-3xs border ${idx === qItem.correctOptionIndex
+                                ? "border-[#365CF5] bg-[#EEF3FF] text-[#2848D8] font-bold"
+                                : "border-[#DCE3EF] text-slate-400"
+                                }`}
                             >
                               {String.fromCharCode(65 + idx)}
                             </span>
                             <span>{opt}</span>
                             {idx === qItem.correctOptionIndex && (
-                              <span className="text-3xs text-teal-700 font-medium">✓ Correct</span>
+                              <span className="text-3xs text-[#365CF5] font-medium">✓ Correct</span>
                             )}
                           </div>
                         ))}
@@ -747,7 +743,7 @@ export default function QuestionsPage() {
                       value={qItem.status}
                       onChange={(e) => handleUpdateStatus(qItem, e.target.value)}
                       aria-label={`Update mastery status for "${qItem.question}"`}
-                      className="rounded-lg border border-stone-200 bg-stone-50 px-2 py-1 text-2xs font-medium text-stone-700 focus:outline-none focus:ring-1 focus:ring-teal-600"
+                      className="rounded-lg border border-[#E6EAF2] bg-[#F4F6FB] px-2 py-1 text-2xs font-medium text-[#344054] focus:outline-none focus:ring-1 focus:ring-[#365CF5]"
                     >
                       <option value="unlearned">Unlearned</option>
                       <option value="learning">Learning</option>
@@ -759,7 +755,7 @@ export default function QuestionsPage() {
                       type="button"
                       onClick={() => handleStartPractice(qItem)}
                       aria-label={`Practice question "${qItem.question}"`}
-                      className="rounded-lg border border-stone-200 px-2.5 py-1 text-2xs font-semibold text-teal-800 hover:bg-teal-50 transition-colors"
+                      className="rounded-lg border border-[#DCE3EF] px-2.5 py-1 text-2xs font-semibold text-[#365CF5] hover:bg-[#EEF3FF] transition-colors"
                     >
                       Practice
                     </button>
@@ -769,7 +765,7 @@ export default function QuestionsPage() {
                       type="button"
                       onClick={() => handleOpenEdit(qItem)}
                       aria-label={`Edit question "${qItem.question}"`}
-                      className="rounded-lg p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition-colors"
+                      className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
                     >
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
@@ -781,7 +777,7 @@ export default function QuestionsPage() {
                       type="button"
                       onClick={() => handleOpenDelete(qItem)}
                       aria-label={`Delete question "${qItem.question}"`}
-                      className="rounded-lg p-1 text-stone-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                      className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
                     >
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
@@ -797,20 +793,20 @@ export default function QuestionsPage() {
 
       {/* Pagination Controls */}
       {total > PAGE_SIZE && (
-        <div className="flex items-center justify-between border-t border-stone-200 pt-4 text-xs text-stone-500">
+        <div className="flex items-center justify-between border-t border-slate-200 pt-4 text-xs text-slate-500">
           <div>
-            Showing <span className="font-medium text-stone-900">{offset + 1}</span> to{" "}
-            <span className="font-medium text-stone-900">
+            Showing <span className="font-medium text-slate-900">{offset + 1}</span> to{" "}
+            <span className="font-medium text-slate-900">
               {Math.min(offset + PAGE_SIZE, total)}
             </span>{" "}
-            of <span className="font-medium text-stone-900">{total}</span> questions
+            of <span className="font-medium text-slate-900">{total}</span> questions
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               disabled={offset === 0 || isLoading}
               onClick={() => setOffset((prev) => Math.max(0, prev - PAGE_SIZE))}
-              className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 font-medium text-stone-700 shadow-2xs hover:bg-stone-50 disabled:opacity-40 transition-colors"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 shadow-2xs hover:bg-slate-50 disabled:opacity-40 transition-colors"
             >
               Previous
             </button>
@@ -818,7 +814,7 @@ export default function QuestionsPage() {
               type="button"
               disabled={!hasMore || offset + PAGE_SIZE >= total || isLoading}
               onClick={() => setOffset((prev) => prev + PAGE_SIZE)}
-              className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 font-medium text-stone-700 shadow-2xs hover:bg-stone-50 disabled:opacity-40 transition-colors"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 shadow-2xs hover:bg-slate-50 disabled:opacity-40 transition-colors"
             >
               Next
             </button>
@@ -833,21 +829,21 @@ export default function QuestionsPage() {
           aria-modal="true"
           aria-label="Practice Question"
           aria-labelledby="practice-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
         >
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-6 sm:p-8 shadow-2xl border border-stone-200 space-y-6">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6">
             {questions.length === 0 ? (
               <div className="text-center py-6 space-y-4">
-                <h2 id="practice-modal-title" className="text-lg font-bold text-stone-900">
+                <h2 id="practice-modal-title" className="text-lg font-bold text-slate-900">
                   No questions to practice
                 </h2>
-                <p className="text-sm text-stone-600">
+                <p className="text-sm text-slate-600">
                   There are no questions available to practice in your current filter view.
                 </p>
                 <button
                   type="button"
                   onClick={() => setIsPracticeMode(false)}
-                  className="rounded-xl bg-teal-800 px-5 py-2 text-xs font-semibold text-white"
+                  className="rounded-xl bg-[#365CF5] px-5 py-2 text-xs font-semibold text-white hover:bg-[#2848D8] transition-colors"
                 >
                   Close
                 </button>
@@ -858,17 +854,17 @@ export default function QuestionsPage() {
                 return (
                   <>
                     {/* Header */}
-                    <div className="flex items-center justify-between border-b border-stone-200 pb-4">
+                    <div className="flex items-center justify-between border-b border-[#E6EAF2] pb-4">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-teal-700">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-[#365CF5]">
                             Practice Mode
                           </span>
-                          <span className="text-xs text-stone-400">
+                          <span className="text-xs text-[#8A94A6]">
                             Question {practiceIndex + 1} of {questions.length}
                           </span>
                         </div>
-                        <h2 id="practice-modal-title" className="text-base font-bold text-stone-900 mt-1">
+                        <h2 id="practice-modal-title" className="text-base font-bold text-[#182230] mt-1">
                           Practice: {currentQ.topic ? `#${currentQ.topic}` : "Question"}
                         </h2>
                       </div>
@@ -876,7 +872,7 @@ export default function QuestionsPage() {
                         type="button"
                         onClick={() => setIsPracticeMode(false)}
                         aria-label="Exit practice mode"
-                        className="rounded-lg p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
+                        className="rounded-lg p-1.5 text-[#8A94A6] hover:bg-[#F4F6FB] hover:text-[#182230] transition-colors"
                       >
                         ✕
                       </button>
@@ -884,7 +880,7 @@ export default function QuestionsPage() {
 
                     {/* Practice Notice */}
                     {practiceSuccessNotice && (
-                      <div className="rounded-xl bg-teal-50 border border-teal-200 p-3 text-xs text-teal-800 font-medium">
+                      <div className="rounded-xl bg-[#EEF3FF] border border-[#365CF5]/30 p-3 text-xs text-[#2848D8] font-medium">
                         {practiceSuccessNotice}
                       </div>
                     )}
@@ -892,19 +888,19 @@ export default function QuestionsPage() {
                     {/* Question Card */}
                     <div className="space-y-4">
                       <div className="flex items-center gap-2">
-                        <span className="rounded-md bg-stone-100 px-2 py-0.5 text-2xs font-semibold text-stone-700">
+                        <span className="rounded-md bg-[#F4F6FB] border border-[#E6EAF2] px-2 py-0.5 text-2xs font-semibold text-[#344054]">
                           {currentQ.type}
                         </span>
-                        <span className="rounded-md bg-stone-100 px-2 py-0.5 text-2xs font-semibold text-stone-700">
+                        <span className="rounded-md bg-[#F4F6FB] border border-[#E6EAF2] px-2 py-0.5 text-2xs font-semibold text-[#344054]">
                           {currentQ.difficulty}
                         </span>
-                        <span className="rounded-md bg-stone-100 px-2 py-0.5 text-2xs font-semibold text-stone-700">
+                        <span className="rounded-md bg-[#F4F6FB] border border-[#E6EAF2] px-2 py-0.5 text-2xs font-semibold text-[#344054]">
                           Status: {currentQ.status}
                         </span>
                       </div>
 
-                      <div className="rounded-2xl bg-stone-50 p-5 border border-stone-200">
-                        <p className="text-base font-medium text-stone-900 leading-relaxed whitespace-pre-wrap">
+                      <div className="rounded-2xl bg-[#F7F8FA] p-5 border border-[#E6EAF2]">
+                        <p className="text-base font-medium text-[#182230] leading-relaxed whitespace-pre-wrap">
                           {currentQ.question}
                         </p>
                       </div>
@@ -912,21 +908,21 @@ export default function QuestionsPage() {
                       {/* If MCQ: Options Selection & Check */}
                       {currentQ.type === "MCQ" && Array.isArray(currentQ.options) && (
                         <div className="space-y-2 pt-2">
-                          <p className="text-xs font-semibold text-stone-700">Select an option:</p>
+                          <p className="text-xs font-semibold text-[#182230]">Select an option:</p>
                           <div className="space-y-2">
                             {currentQ.options.map((opt, optIdx) => {
                               const isSelected = selectedMcqOption === optIdx;
                               const isCorrect = optIdx === currentQ.correctOptionIndex;
-                              let optionClass = "border-stone-200 hover:border-stone-300 bg-white text-stone-800";
+                              let optionClass = "border-[#E6EAF2] hover:border-[#365CF5]/40 bg-white text-[#182230]";
 
                               if (isMcqChecked) {
                                 if (isCorrect) {
-                                  optionClass = "border-teal-500 bg-teal-50/70 text-teal-900 font-semibold";
+                                  optionClass = "border-emerald-500 bg-emerald-50/70 text-emerald-900 font-semibold";
                                 } else if (isSelected && !isCorrect) {
                                   optionClass = "border-rose-400 bg-rose-50 text-rose-900 font-semibold";
                                 }
                               } else if (isSelected) {
-                                optionClass = "border-teal-600 bg-teal-50 text-teal-900 font-medium ring-1 ring-teal-600";
+                                optionClass = "border-[#365CF5] bg-[#EEF3FF] text-[#182230] font-medium ring-1 ring-[#365CF5]";
                               }
 
                               return (
@@ -937,12 +933,12 @@ export default function QuestionsPage() {
                                   onClick={() => setSelectedMcqOption(optIdx)}
                                   className={`w-full text-left flex items-center gap-3 p-3 rounded-xl border text-sm transition-all ${optionClass}`}
                                 >
-                                  <span className="h-6 w-6 rounded-full border border-stone-300 flex items-center justify-center text-xs font-bold shrink-0">
+                                  <span className="h-6 w-6 rounded-full border border-[#DCE3EF] flex items-center justify-center text-xs font-bold shrink-0">
                                     {String.fromCharCode(65 + optIdx)}
                                   </span>
                                   <span className="flex-1">{opt}</span>
                                   {isMcqChecked && isCorrect && (
-                                    <span className="text-xs text-teal-700 font-bold shrink-0">✓ Correct Answer</span>
+                                    <span className="text-xs text-emerald-700 font-bold shrink-0">✓ Correct Answer</span>
                                   )}
                                   {isMcqChecked && isSelected && !isCorrect && (
                                     <span className="text-xs text-rose-600 font-bold shrink-0">✕ Your Choice</span>
@@ -960,7 +956,7 @@ export default function QuestionsPage() {
                                 setIsMcqChecked(true);
                                 setIsAnswerRevealed(true);
                               }}
-                              className="mt-2 rounded-xl bg-teal-800 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                              className="mt-2 rounded-xl bg-[#365CF5] px-4 py-2 text-xs font-semibold text-white hover:bg-[#2848D8] disabled:opacity-50 transition-colors"
                             >
                               Check Answer
                             </button>
@@ -974,7 +970,7 @@ export default function QuestionsPage() {
                           <button
                             type="button"
                             onClick={() => setIsAnswerRevealed(true)}
-                            className="rounded-xl border border-stone-300 bg-white px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+                            className="rounded-xl border border-[#DCE3EF] bg-white px-4 py-2 text-xs font-semibold text-[#344054] hover:bg-[#F4F6FB] transition-colors"
                           >
                             Reveal Answer & Explanation
                           </button>
@@ -983,13 +979,13 @@ export default function QuestionsPage() {
 
                       {/* Revealed Answer & Explanation */}
                       {isAnswerRevealed && (
-                        <div className="space-y-3 rounded-2xl bg-teal-50/40 border border-teal-200/80 p-5 animate-fade-in">
+                        <div className="space-y-3 rounded-2xl bg-[#EFF6FF] border border-[#BFDBFE] p-5 animate-fade-in">
                           {currentQ.answer && (
                             <div>
-                              <h4 className="text-xs font-bold uppercase tracking-wider text-teal-900 mb-1">
+                              <h4 className="text-xs font-bold uppercase tracking-wider text-[#182230] mb-1">
                                 {currentQ.type === "CODING" ? "Solution / Implementation" : "Answer"}
                               </h4>
-                              <p className={`text-sm text-stone-800 whitespace-pre-wrap ${currentQ.type === "CODING" ? "font-mono bg-white p-3 rounded-xl border border-stone-200 text-xs" : ""}`}>
+                              <p className={`text-sm text-[#182230] whitespace-pre-wrap ${currentQ.type === "CODING" ? "font-mono bg-white p-3 rounded-xl border border-[#E5E7EB] text-xs" : ""}`}>
                                 {currentQ.answer}
                               </p>
                             </div>
@@ -997,10 +993,10 @@ export default function QuestionsPage() {
 
                           {currentQ.explanation && (
                             <div>
-                              <h4 className="text-xs font-bold uppercase tracking-wider text-teal-900 mb-1">
+                              <h4 className="text-xs font-bold uppercase tracking-wider text-[#182230] mb-1">
                                 Explanation
                               </h4>
-                              <p className="text-xs text-stone-700 whitespace-pre-wrap leading-relaxed">
+                              <p className="text-xs text-[#344054] whitespace-pre-wrap leading-relaxed">
                                 {currentQ.explanation}
                               </p>
                             </div>
@@ -1009,7 +1005,7 @@ export default function QuestionsPage() {
                       )}
 
                       {/* Practice Result Buttons (Always Available) */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-stone-200">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-slate-200">
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
@@ -1033,7 +1029,7 @@ export default function QuestionsPage() {
                         <button
                           type="button"
                           onClick={handleNextPractice}
-                          className="rounded-xl border border-stone-300 bg-white px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+                          className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                         >
                           Next question →
                         </button>
@@ -1053,11 +1049,11 @@ export default function QuestionsPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="form-question-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
         >
-          <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-6 shadow-xl border border-stone-200">
-            <div className="flex items-center justify-between border-b border-stone-200 pb-3">
-              <h2 id="form-question-modal-title" className="text-lg font-bold text-stone-900">
+          <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-6 shadow-xl border border-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <h2 id="form-question-modal-title" className="text-lg font-bold text-slate-900">
                 {editingQuestion ? "Edit Question" : "New Question"}
               </h2>
               <button
@@ -1065,7 +1061,7 @@ export default function QuestionsPage() {
                 onClick={handleCloseForm}
                 disabled={isSubmittingForm}
                 aria-label="Close modal"
-                className="rounded-lg p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-600"
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
               >
                 ✕
               </button>
@@ -1075,7 +1071,7 @@ export default function QuestionsPage() {
               {/* Type, Difficulty, Status Row */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label htmlFor="q-type" className="block text-xs font-semibold text-stone-700 mb-1">
+                  <label htmlFor="q-type" className="block text-xs font-semibold text-slate-700 mb-1">
                     Question Type <span className="text-rose-600">*</span>
                   </label>
                   <select
@@ -1083,7 +1079,7 @@ export default function QuestionsPage() {
                     value={formType}
                     onChange={(e) => setFormType(e.target.value)}
                     disabled={isSubmittingForm}
-                    className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-medium text-stone-700 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+                    className="w-full rounded-xl border border-[#DCE3EF] bg-white px-3 py-2 text-xs font-medium text-[#344054] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#365CF5]"
                   >
                     <option value="SHORT_ANSWER">Short Answer</option>
                     <option value="MCQ">MCQ</option>
@@ -1092,7 +1088,7 @@ export default function QuestionsPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="q-difficulty" className="block text-xs font-semibold text-stone-700 mb-1">
+                  <label htmlFor="q-difficulty" className="block text-xs font-semibold text-[#182230] mb-1">
                     Difficulty
                   </label>
                   <select
@@ -1100,7 +1096,7 @@ export default function QuestionsPage() {
                     value={formDifficulty}
                     onChange={(e) => setFormDifficulty(e.target.value)}
                     disabled={isSubmittingForm}
-                    className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-medium text-stone-700 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+                    className="w-full rounded-xl border border-[#DCE3EF] bg-white px-3 py-2 text-xs font-medium text-[#344054] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#365CF5]"
                   >
                     <option value="easy">Easy</option>
                     <option value="medium">Medium</option>
@@ -1109,7 +1105,7 @@ export default function QuestionsPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="q-status" className="block text-xs font-semibold text-stone-700 mb-1">
+                  <label htmlFor="q-status" className="block text-xs font-semibold text-[#182230] mb-1">
                     Mastery Status
                   </label>
                   <select
@@ -1117,7 +1113,7 @@ export default function QuestionsPage() {
                     value={formStatus}
                     onChange={(e) => setFormStatus(e.target.value)}
                     disabled={isSubmittingForm}
-                    className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-medium text-stone-700 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+                    className="w-full rounded-xl border border-[#DCE3EF] bg-white px-3 py-2 text-xs font-medium text-[#344054] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#365CF5]"
                   >
                     <option value="unlearned">Unlearned</option>
                     <option value="learning">Learning</option>
@@ -1128,7 +1124,7 @@ export default function QuestionsPage() {
 
               {/* Topic */}
               <div>
-                <label htmlFor="q-topic" className="block text-xs font-semibold text-stone-700 mb-1">
+                <label htmlFor="q-topic" className="block text-xs font-semibold text-[#182230] mb-1">
                   Topic (Optional)
                 </label>
                 <input
@@ -1139,13 +1135,13 @@ export default function QuestionsPage() {
                   maxLength={QUESTION_LIMITS.MAX_TOPIC_LENGTH}
                   placeholder="e.g. Arrays, Java Collections, SQL"
                   disabled={isSubmittingForm}
-                  className="w-full rounded-xl border border-stone-300 px-3 py-2 text-xs text-stone-900 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+                  className="w-full rounded-xl border border-[#DCE3EF] bg-white px-3 py-2 text-xs text-[#182230] placeholder-[#8A94A6] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#365CF5]"
                 />
               </div>
 
               {/* Question Text */}
               <div>
-                <label htmlFor="q-question" className="block text-xs font-semibold text-stone-700 mb-1">
+                <label htmlFor="q-question" className="block text-xs font-semibold text-[#182230] mb-1">
                   Question <span className="text-rose-600">*</span>
                 </label>
                 <textarea
@@ -1157,25 +1153,25 @@ export default function QuestionsPage() {
                   required
                   placeholder="Enter the question prompt..."
                   disabled={isSubmittingForm}
-                  className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+                  className="w-full rounded-xl border border-[#DCE3EF] bg-white px-3 py-2 text-sm text-[#182230] placeholder-[#8A94A6] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#365CF5]"
                 />
-                <p className="mt-1 text-right text-3xs text-stone-400">
+                <p className="mt-1 text-right text-3xs text-[#8A94A6]">
                   {formQuestion.length}/{QUESTION_LIMITS.MAX_QUESTION_LENGTH}
                 </p>
               </div>
 
               {/* MCQ Options Builder */}
               {formType === "MCQ" && (
-                <div className="space-y-3 rounded-2xl bg-stone-50 p-4 border border-stone-200">
+                <div className="space-y-3 rounded-2xl bg-[#F7F8FA] p-4 border border-[#E6EAF2]">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-stone-800">
+                    <span className="text-xs font-bold text-[#182230]">
                       Options (2–6) & Correct Answer
                     </span>
                     <button
                       type="button"
                       disabled={formMcqOptions.length >= QUESTION_LIMITS.MAX_MCQ_OPTIONS || isSubmittingForm}
                       onClick={handleAddMcqOption}
-                      className="text-xs font-semibold text-teal-800 hover:text-teal-900 disabled:opacity-40"
+                      className="text-xs font-semibold text-[#365CF5] hover:text-[#2848D8] disabled:opacity-40 transition-colors"
                     >
                       + Add Option
                     </button>
@@ -1190,9 +1186,9 @@ export default function QuestionsPage() {
                           checked={formCorrectOptionIndex === idx}
                           onChange={() => setFormCorrectOptionIndex(idx)}
                           aria-label={`Mark option ${idx + 1} as correct`}
-                          className="text-teal-600 focus:ring-teal-500"
+                          className="text-[#365CF5] focus:ring-[#365CF5]"
                         />
-                        <span className="text-xs font-bold text-stone-500 w-4">
+                        <span className="text-xs font-bold text-[#667085] w-4">
                           {String.fromCharCode(65 + idx)}.
                         </span>
                         <input
@@ -1202,14 +1198,14 @@ export default function QuestionsPage() {
                           maxLength={QUESTION_LIMITS.MAX_MCQ_OPTION_LENGTH}
                           placeholder={`Option ${idx + 1}`}
                           disabled={isSubmittingForm}
-                          className="flex-1 rounded-xl border border-stone-300 px-3 py-1.5 text-xs text-stone-900 focus:border-teal-600 focus:outline-none"
+                          className="flex-1 rounded-xl border border-[#DCE3EF] bg-white px-3 py-1.5 text-xs text-[#182230] placeholder-[#8A94A6] focus:border-[#365CF5] focus:outline-none"
                         />
                         {formMcqOptions.length > QUESTION_LIMITS.MIN_MCQ_OPTIONS && (
                           <button
                             type="button"
                             onClick={() => handleRemoveMcqOption(idx)}
                             aria-label={`Remove option ${idx + 1}`}
-                            className="p-1 text-stone-400 hover:text-rose-600 text-xs"
+                            className="p-1 text-[#8A94A6] hover:text-rose-600 text-xs transition-colors"
                           >
                             ✕
                           </button>
@@ -1217,7 +1213,7 @@ export default function QuestionsPage() {
                       </div>
                     ))}
                   </div>
-                  <p className="text-3xs text-stone-500">
+                  <p className="text-3xs text-[#667085]">
                     Select the radio button next to the option that is the correct answer.
                   </p>
                 </div>
@@ -1226,7 +1222,7 @@ export default function QuestionsPage() {
               {/* Answer / Solution (for SHORT_ANSWER and CODING) */}
               {formType !== "MCQ" && (
                 <div>
-                  <label htmlFor="q-answer" className="block text-xs font-semibold text-stone-700 mb-1">
+                  <label htmlFor="q-answer" className="block text-xs font-semibold text-[#182230] mb-1">
                     {formType === "CODING" ? "Solution Code / Implementation" : "Answer"} (Optional)
                   </label>
                   <textarea
@@ -1241,11 +1237,10 @@ export default function QuestionsPage() {
                         : "Enter expected answer..."
                     }
                     disabled={isSubmittingForm}
-                    className={`w-full rounded-xl border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600 ${
-                      formType === "CODING" ? "font-mono text-xs" : ""
-                    }`}
+                    className={`w-full rounded-xl border border-[#DCE3EF] bg-white px-3 py-2 text-sm text-[#182230] placeholder-[#8A94A6] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#365CF5] ${formType === "CODING" ? "font-mono text-xs" : ""
+                      }`}
                   />
-                  <p className="mt-1 text-right text-3xs text-stone-400">
+                  <p className="mt-1 text-right text-3xs text-[#8A94A6]">
                     {formAnswer.length}/{QUESTION_LIMITS.MAX_ANSWER_LENGTH}
                   </p>
                 </div>
@@ -1253,7 +1248,7 @@ export default function QuestionsPage() {
 
               {/* Explanation */}
               <div>
-                <label htmlFor="q-explanation" className="block text-xs font-semibold text-stone-700 mb-1">
+                <label htmlFor="q-explanation" className="block text-xs font-semibold text-[#182230] mb-1">
                   Explanation / Notes (Optional)
                 </label>
                 <textarea
@@ -1264,9 +1259,9 @@ export default function QuestionsPage() {
                   rows={2}
                   placeholder="Key insights, time/space complexity, or common edge cases..."
                   disabled={isSubmittingForm}
-                  className="w-full rounded-xl border border-stone-300 px-3 py-2 text-xs text-stone-900 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+                  className="w-full rounded-xl border border-[#DCE3EF] bg-white px-3 py-2 text-xs text-[#182230] placeholder-[#8A94A6] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#365CF5]"
                 />
-                <p className="mt-1 text-right text-3xs text-stone-400">
+                <p className="mt-1 text-right text-3xs text-[#8A94A6]">
                   {formExplanation.length}/{QUESTION_LIMITS.MAX_EXPLANATION_LENGTH}
                 </p>
               </div>
@@ -1277,19 +1272,19 @@ export default function QuestionsPage() {
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-200">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#E6EAF2]">
                 <button
                   type="button"
                   onClick={handleCloseForm}
                   disabled={isSubmittingForm}
-                  className="rounded-xl border border-stone-300 px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+                  className="rounded-xl border border-[#DCE3EF] px-4 py-2 text-xs font-semibold text-[#344054] hover:bg-[#F4F6FB] transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingForm || !formQuestion.trim()}
-                  className="rounded-xl bg-teal-800 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+                  className="rounded-xl bg-[#365CF5] px-4 py-2 text-xs font-semibold text-white hover:bg-[#2848D8] disabled:opacity-50 transition-colors"
                 >
                   {isSubmittingForm ? "Saving..." : editingQuestion ? "Save Changes" : "Create Question"}
                 </button>
@@ -1305,19 +1300,19 @@ export default function QuestionsPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-q-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
         >
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-stone-200">
-            <h2 id="delete-q-modal-title" className="text-lg font-bold text-stone-900">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-200">
+            <h2 id="delete-q-modal-title" className="text-lg font-bold text-slate-900">
               Delete Question
             </h2>
-            <p className="mt-2 text-sm text-stone-600">
+            <p className="mt-2 text-sm text-slate-600">
               Are you sure you want to delete this question?
             </p>
-            <p className="mt-1 text-xs font-semibold text-stone-800 italic line-clamp-2">
+            <p className="mt-1 text-xs font-semibold text-slate-800 italic line-clamp-2">
               “{deletingQuestion.question}”
             </p>
-            <div className="mt-3 rounded-xl bg-stone-50 border border-stone-200 p-3 text-xs text-stone-600">
+            <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs text-slate-600">
               This question will be moved to a deleted state and excluded from your active question bank.
             </div>
 
@@ -1332,7 +1327,7 @@ export default function QuestionsPage() {
                 type="button"
                 onClick={handleCloseDelete}
                 disabled={isSubmittingDelete}
-                className="rounded-xl border border-stone-300 px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+                className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
               >
                 Cancel
               </button>
@@ -1340,7 +1335,7 @@ export default function QuestionsPage() {
                 type="button"
                 onClick={handleSubmitDelete}
                 disabled={isSubmittingDelete}
-                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+                className="rounded-xl bg-rose-600 hover:bg-rose-700 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50 transition-colors"
               >
                 {isSubmittingDelete ? "Deleting..." : "Delete Question"}
               </button>

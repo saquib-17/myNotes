@@ -257,6 +257,7 @@ function mapQuestionRow(row) {
   if (!row) return null;
   return {
     id: row.id,
+    workspaceId: row.workspace_id || null,
     type: row.type,
     question: row.question,
     answer: row.answer,
@@ -277,6 +278,7 @@ function mapQuestionRow(row) {
  */
 export async function createQuestion({
   userId,
+  workspaceId = null,
   type,
   question,
   answer = null,
@@ -308,6 +310,7 @@ export async function createQuestion({
   const query = `
     INSERT INTO questions (
       user_id,
+      workspace_id,
       type,
       question,
       answer,
@@ -318,9 +321,10 @@ export async function createQuestion({
       options,
       correct_option_index
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11)
     RETURNING
       id,
+      workspace_id,
       type,
       question,
       answer,
@@ -337,6 +341,7 @@ export async function createQuestion({
 
   const values = [
     userId,
+    workspaceId || null,
     normalizedType,
     normalizedQuestion,
     normalizedAnswer,
@@ -357,6 +362,7 @@ export async function createQuestion({
  */
 export async function findQuestionsByUserId({
   userId,
+  workspaceId = null,
   type,
   difficulty,
   status,
@@ -368,6 +374,11 @@ export async function findQuestionsByUserId({
 }) {
   const conditions = ['user_id = $1', 'deleted_at IS NULL'];
   const values = [userId];
+
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
 
   if (type && QUESTION_LIMITS.ALLOWED_TYPES.includes(type.toUpperCase())) {
     values.push(type.toUpperCase());
@@ -447,10 +458,18 @@ export async function findQuestionsByUserId({
 /**
  * Retrieves a single active question by ID.
  */
-export async function findQuestionByIdAndUserId({ id, userId, pool = getPool() }) {
+export async function findQuestionByIdAndUserId({ id, userId, workspaceId = null, pool = getPool() }) {
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL'];
+  const values = [id, userId];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
     SELECT
       id,
+      workspace_id,
       type,
       question,
       answer,
@@ -464,10 +483,10 @@ export async function findQuestionByIdAndUserId({ id, userId, pool = getPool() }
       created_at,
       updated_at
     FROM questions
-    WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL;
+    WHERE ${conditions.join(' AND ')};
   `;
 
-  const result = await pool.query(query, [id, userId]);
+  const result = await pool.query(query, values);
   if (result.rowCount === 0) {
     return null;
   }
@@ -481,6 +500,7 @@ export async function findQuestionByIdAndUserId({ id, userId, pool = getPool() }
 export async function updateQuestion({
   id,
   userId,
+  workspaceId = null,
   type,
   question,
   answer,
@@ -493,7 +513,7 @@ export async function updateQuestion({
   pool = getPool(),
 }) {
   // First fetch existing question to inspect current type
-  const existing = await findQuestionByIdAndUserId({ id, userId, pool });
+  const existing = await findQuestionByIdAndUserId({ id, userId, workspaceId, pool });
   if (!existing) {
     return { notFound: true };
   }
@@ -566,12 +586,19 @@ export async function updateQuestion({
     setClauses.push('correct_option_index = NULL');
   }
 
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL'];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
     UPDATE questions
     SET ${setClauses.join(', ')}
-    WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+    WHERE ${conditions.join(' AND ')}
     RETURNING
       id,
+      workspace_id,
       type,
       question,
       answer,
@@ -596,7 +623,7 @@ export async function updateQuestion({
 /**
  * Updates practice timestamp on a question.
  */
-export async function recordPractice({ id, userId, result: practiceResult, pool = getPool() }) {
+export async function recordPractice({ id, userId, workspaceId = null, result: practiceResult, pool = getPool() }) {
   if (
     practiceResult !== undefined &&
     practiceResult !== null &&
@@ -609,14 +636,22 @@ export async function recordPractice({ id, userId, result: practiceResult, pool 
     throw err;
   }
 
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL'];
+  const values = [id, userId];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
     UPDATE questions
     SET
       last_practiced_at = now(),
       updated_at = now()
-    WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+    WHERE ${conditions.join(' AND ')}
     RETURNING
       id,
+      workspace_id,
       type,
       question,
       answer,
@@ -631,7 +666,7 @@ export async function recordPractice({ id, userId, result: practiceResult, pool 
       updated_at;
   `;
 
-  const result = await pool.query(query, [id, userId]);
+  const result = await pool.query(query, values);
   if (result.rowCount === 0) {
     return { notFound: true };
   }
@@ -641,17 +676,25 @@ export async function recordPractice({ id, userId, result: practiceResult, pool 
 /**
  * Updates mastery status only.
  */
-export async function updateQuestionStatus({ id, userId, status, pool = getPool() }) {
+export async function updateQuestionStatus({ id, userId, workspaceId = null, status, pool = getPool() }) {
   const normalizedStatus = validateQuestionStatus(status);
+
+  const conditions = ['id = $2', 'user_id = $3', 'deleted_at IS NULL'];
+  const values = [normalizedStatus, id, userId];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
 
   const query = `
     UPDATE questions
     SET
       status = $1,
       updated_at = now()
-    WHERE id = $2 AND user_id = $3 AND deleted_at IS NULL
+    WHERE ${conditions.join(' AND ')}
     RETURNING
       id,
+      workspace_id,
       type,
       question,
       answer,
@@ -666,7 +709,7 @@ export async function updateQuestionStatus({ id, userId, status, pool = getPool(
       updated_at;
   `;
 
-  const result = await pool.query(query, [normalizedStatus, id, userId]);
+  const result = await pool.query(query, values);
   if (result.rowCount === 0) {
     return { notFound: true };
   }
@@ -676,17 +719,24 @@ export async function updateQuestionStatus({ id, userId, status, pool = getPool(
 /**
  * Soft deletes an owned question. Never physically deletes data.
  */
-export async function softDeleteQuestion({ id, userId, pool = getPool() }) {
+export async function softDeleteQuestion({ id, userId, workspaceId = null, pool = getPool() }) {
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL'];
+  const values = [id, userId];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
     UPDATE questions
     SET
       deleted_at = now(),
       updated_at = now()
-    WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+    WHERE ${conditions.join(' AND ')}
     RETURNING id;
   `;
 
-  const result = await pool.query(query, [id, userId]);
+  const result = await pool.query(query, values);
   if (result.rowCount === 1) {
     return { success: true, deleted: true };
   }

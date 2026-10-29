@@ -81,6 +81,7 @@ export function validateJournalContent(content) {
  */
 export async function findJournalEntriesByUserId({
   userId,
+  workspaceId = null,
   from,
   to,
   q,
@@ -99,6 +100,11 @@ export async function findJournalEntriesByUserId({
 
   const conditions = ['user_id = $1', 'deleted_at IS NULL'];
   const values = [userId];
+
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
 
   if (from) {
     validateEntryDate(from, true);
@@ -128,7 +134,7 @@ export async function findJournalEntriesByUserId({
   const total = parseInt(countResult.rows[0].total, 10) || 0;
 
   const selectQuery = `
-    SELECT id, user_id, entry_date::text AS entry_date, content, created_at, updated_at
+    SELECT id, user_id, workspace_id AS "workspaceId", entry_date::text AS entry_date, content, created_at, updated_at
     FROM journal_entries
     WHERE ${whereClause}
     ORDER BY entry_date DESC, id ASC
@@ -149,10 +155,11 @@ export async function findJournalEntriesByUserId({
 }
 
 /**
- * Finds a single active journal entry for a given user and date.
+ * Finds a single active journal entry for a given user, optional workspace, and date.
  */
 export async function findJournalEntryByDateAndUserId({
   userId,
+  workspaceId = null,
   entryDate,
   pool = getPool(),
 }) {
@@ -163,22 +170,29 @@ export async function findJournalEntryByDateAndUserId({
   }
   const validDate = validateEntryDate(entryDate, true);
 
+  const conditions = ['user_id = $1', 'entry_date = $2', 'deleted_at IS NULL'];
+  const values = [userId, validDate];
+
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
-    SELECT id, user_id, entry_date::text AS entry_date, content, created_at, updated_at
+    SELECT id, user_id, workspace_id AS "workspaceId", entry_date::text AS entry_date, content, created_at, updated_at
     FROM journal_entries
-    WHERE user_id = $1 AND entry_date = $2 AND deleted_at IS NULL
+    WHERE ${conditions.join(' AND ')}
   `;
-  const result = await pool.query(query, [userId, validDate]);
+  const result = await pool.query(query, values);
   return result.rows[0] || null;
 }
 
 /**
- * Creates or updates an active journal entry for a specific calendar date.
- * If an active entry exists, updates it.
- * If not, creates a new entry (even if an older entry for this date was soft-deleted).
+ * Creates or updates an active journal entry for a specific calendar date and workspace.
  */
 export async function upsertJournalEntry({
   userId,
+  workspaceId = null,
   entryDate,
   content,
   pool = getPool(),
@@ -193,6 +207,7 @@ export async function upsertJournalEntry({
 
   const existing = await findJournalEntryByDateAndUserId({
     userId,
+    workspaceId,
     entryDate: validDate,
     pool,
   });
@@ -202,7 +217,7 @@ export async function upsertJournalEntry({
       UPDATE journal_entries
       SET content = $1, updated_at = NOW()
       WHERE id = $2
-      RETURNING id, user_id, entry_date::text AS entry_date, content, created_at, updated_at
+      RETURNING id, user_id, workspace_id AS "workspaceId", entry_date::text AS entry_date, content, created_at, updated_at
     `;
     const result = await pool.query(updateQuery, [validContent, existing.id]);
     return {
@@ -212,11 +227,11 @@ export async function upsertJournalEntry({
   }
 
   const insertQuery = `
-    INSERT INTO journal_entries (user_id, entry_date, content)
-    VALUES ($1, $2, $3)
-    RETURNING id, user_id, entry_date::text AS entry_date, content, created_at, updated_at
+    INSERT INTO journal_entries (user_id, workspace_id, entry_date, content)
+    VALUES ($1, $2, $3, $4)
+    RETURNING id, user_id, workspace_id AS "workspaceId", entry_date::text AS entry_date, content, created_at, updated_at
   `;
-  const result = await pool.query(insertQuery, [userId, validDate, validContent]);
+  const result = await pool.query(insertQuery, [userId, workspaceId || null, validDate, validContent]);
   return {
     entry: result.rows[0],
     created: true,
@@ -224,11 +239,12 @@ export async function upsertJournalEntry({
 }
 
 /**
- * Soft-deletes an active journal entry for a given user and date.
+ * Soft-deletes an active journal entry for a given user, optional workspace, and date.
  * Returns true if an entry was soft-deleted, false if not found.
  */
 export async function softDeleteJournalEntry({
   userId,
+  workspaceId = null,
   entryDate,
   pool = getPool(),
 }) {
@@ -239,13 +255,20 @@ export async function softDeleteJournalEntry({
   }
   const validDate = validateEntryDate(entryDate, true);
 
+  const conditions = ['user_id = $1', 'entry_date = $2', 'deleted_at IS NULL'];
+  const values = [userId, validDate];
+
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
     UPDATE journal_entries
     SET deleted_at = NOW(), updated_at = NOW()
-    WHERE user_id = $1 AND entry_date = $2 AND deleted_at IS NULL
+    WHERE ${conditions.join(' AND ')}
     RETURNING id
   `;
-  const result = await pool.query(query, [userId, validDate]);
+  const result = await pool.query(query, values);
   return result.rowCount > 0;
 }
-

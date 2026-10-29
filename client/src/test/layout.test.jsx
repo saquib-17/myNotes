@@ -106,6 +106,35 @@ describe("Stage 4: Responsive Application Shell & Navigation", () => {
       // Logout button present in layout
       expect(screen.getByRole("button", { name: /log out of mynotes/i })).toBeInTheDocument();
     });
+
+    it("supports collapsing and expanding desktop sidebar with localStorage persistence", async () => {
+      getMeRequest.mockResolvedValue(MOCK_USER);
+      const user = userEvent.setup();
+
+      renderApp({ initialEntries: ["/dashboard"] });
+
+      await waitFor(() => {
+        expect(screen.getAllByRole("button", { name: /collapse sidebar/i }).length).toBeGreaterThanOrEqual(1);
+      });
+
+      const collapseBtn = screen.getAllByRole("button", { name: /collapse sidebar/i })[0];
+      await user.click(collapseBtn);
+
+      // Now sidebar should have expand button
+      await waitFor(() => {
+        expect(screen.getAllByRole("button", { name: /expand sidebar/i }).length).toBeGreaterThanOrEqual(1);
+      });
+      expect(localStorage.getItem("mynotes_sidebar_collapsed")).toBe("true");
+
+      // Clicking expand restores it
+      const expandBtn = screen.getAllByRole("button", { name: /expand sidebar/i })[0];
+      await user.click(expandBtn);
+
+      await waitFor(() => {
+        expect(screen.getAllByRole("button", { name: /collapse sidebar/i }).length).toBeGreaterThanOrEqual(1);
+      });
+      expect(localStorage.getItem("mynotes_sidebar_collapsed")).toBe("false");
+    });
   });
 
   // ──────────────────────────────────────────────────────────────────────────

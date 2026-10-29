@@ -145,6 +145,7 @@ function mapDoubtRow(row) {
   if (!row) return null;
   return {
     id: row.id,
+    workspaceId: row.workspace_id || null,
     question: row.question,
     details: row.details,
     subject: row.subject,
@@ -161,6 +162,7 @@ function mapDoubtRow(row) {
  */
 export async function createDoubt({
   userId,
+  workspaceId = null,
   question,
   details = null,
   subject = null,
@@ -178,18 +180,20 @@ export async function createDoubt({
   const query = `
     INSERT INTO doubts (
       user_id,
+      workspace_id,
       question,
       details,
       subject,
       status,
       resolution,
       resolved_at
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     RETURNING *;
   `;
 
   const values = [
     userId,
+    workspaceId || null,
     normalizedQuestion,
     normalizedDetails,
     normalizedSubject,
@@ -207,6 +211,7 @@ export async function createDoubt({
  */
 export async function findDoubtsByUserId({
   userId,
+  workspaceId = null,
   status,
   subject,
   q = '',
@@ -216,6 +221,11 @@ export async function findDoubtsByUserId({
 }) {
   const conditions = ['user_id = $1', 'deleted_at IS NULL'];
   const values = [userId];
+
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
 
   if (status && DOUBT_LIMITS.ALLOWED_STATUSES.includes(status.toLowerCase())) {
     values.push(status.toLowerCase());
@@ -284,10 +294,18 @@ export async function findDoubtsByUserId({
 /**
  * Retrieves a single active doubt by ID.
  */
-export async function findDoubtByIdAndUserId({ id, userId, pool = getPool() }) {
+export async function findDoubtByIdAndUserId({ id, userId, workspaceId = null, pool = getPool() }) {
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL'];
+  const values = [id, userId];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
     SELECT
       id,
+      workspace_id,
       question,
       details,
       subject,
@@ -297,9 +315,9 @@ export async function findDoubtByIdAndUserId({ id, userId, pool = getPool() }) {
       created_at,
       updated_at
     FROM doubts
-    WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL;
+    WHERE ${conditions.join(' AND ')};
   `;
-  const result = await pool.query(query, [id, userId]);
+  const result = await pool.query(query, values);
   if (result.rows.length === 0) {
     return null;
   }
@@ -312,6 +330,7 @@ export async function findDoubtByIdAndUserId({ id, userId, pool = getPool() }) {
 export async function updateDoubt({
   id,
   userId,
+  workspaceId = null,
   question,
   details,
   subject,
@@ -319,7 +338,7 @@ export async function updateDoubt({
   resolution,
   pool = getPool(),
 }) {
-  const current = await findDoubtByIdAndUserId({ id, userId, pool });
+  const current = await findDoubtByIdAndUserId({ id, userId, workspaceId, pool });
   if (!current) {
     return null;
   }
@@ -369,10 +388,16 @@ export async function updateDoubt({
 
   setClauses.push('updated_at = now()');
 
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL'];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
     UPDATE doubts
     SET ${setClauses.join(', ')}
-    WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+    WHERE ${conditions.join(' AND ')}
     RETURNING *;
   `;
 
@@ -386,8 +411,9 @@ export async function updateDoubt({
 /**
  * Sets doubt status ('open' or 'resolved'), optionally setting resolution.
  */
-export async function setDoubtStatus({ id, userId, status, resolution, pool = getPool() }) {
+export async function setDoubtStatus({ id, userId, workspaceId = null, status, resolution, pool = getPool() }) {
   const normalizedStatus = validateDoubtStatus(status);
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL'];
   const values = [id, userId, normalizedStatus];
   const setClauses = [`status = $3`];
 
@@ -410,10 +436,15 @@ export async function setDoubtStatus({ id, userId, status, resolution, pool = ge
 
   setClauses.push('updated_at = now()');
 
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
     UPDATE doubts
     SET ${setClauses.join(', ')}
-    WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+    WHERE ${conditions.join(' AND ')}
     RETURNING *;
   `;
 
@@ -427,14 +458,21 @@ export async function setDoubtStatus({ id, userId, status, resolution, pool = ge
 /**
  * Soft deletes a doubt.
  */
-export async function softDeleteDoubt({ id, userId, pool = getPool() }) {
+export async function softDeleteDoubt({ id, userId, workspaceId = null, pool = getPool() }) {
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL'];
+  const values = [id, userId];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
     UPDATE doubts
     SET deleted_at = now(), updated_at = now()
-    WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+    WHERE ${conditions.join(' AND ')}
     RETURNING id;
   `;
-  const result = await pool.query(query, [id, userId]);
+  const result = await pool.query(query, values);
   return (result.rowCount ?? 0) > 0;
 }
 

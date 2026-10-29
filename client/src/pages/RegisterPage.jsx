@@ -19,7 +19,7 @@ const MAX_PASSWORD_LENGTH = 128;
  */
 function getPasswordStrength(password) {
   if (!password || password.length < MIN_PASSWORD_LENGTH) {
-    return { level: 'weak', label: 'Too short', color: 'bg-red-400', width: 'w-1/4' };
+    return { level: 'weak', label: 'Too short', color: 'bg-rose-500', width: 'w-1/4' };
   }
 
   let score = 0;
@@ -28,14 +28,14 @@ function getPasswordStrength(password) {
   if (/[0-9]/.test(password)) score++;
   if (/[^A-Za-z0-9]/.test(password)) score++;
 
-  if (score <= 1) return { level: 'fair', label: 'Fair', color: 'bg-amber-400', width: 'w-2/4' };
-  if (score === 2) return { level: 'good', label: 'Good', color: 'bg-teal-400', width: 'w-3/4' };
-  return { level: 'strong', label: 'Strong', color: 'bg-teal-600', width: 'w-full' };
+  if (score <= 1) return { level: 'fair', label: 'Fair', color: 'bg-amber-500', width: 'w-2/4' };
+  if (score === 2) return { level: 'good', label: 'Good', color: 'bg-sky-500', width: 'w-3/4' };
+  return { level: 'strong', label: 'Strong', color: 'bg-[#365CF5]', width: 'w-full' };
 }
 
 /**
  * RegisterPage — Accessible registration form with password strength guidance
- * and explicit loading/error feedback.
+ * and explicit loading/error feedback. Midnight Indigo styled with dark mode.
  *
  * Per Stage 3A design, successful registration does NOT auto-login.
  * The user is redirected to /login with a success notice.
@@ -114,11 +114,11 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-stone-50">
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 relative">
       {/* Skip link */}
       <a
         href="#register-form"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-teal-700 focus:px-4 focus:py-2 focus:text-white focus:text-sm focus:font-medium"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-[#365CF5] focus:px-4 focus:py-2 focus:text-white focus:text-sm focus:font-medium"
       >
         Skip to registration form
       </a>
@@ -128,22 +128,22 @@ export default function RegisterPage() {
           {/* Logo / Brand */}
           <div className="flex items-center justify-center gap-3 mb-8">
             <div
-              className="h-10 w-10 rounded-xl bg-teal-800 text-white flex items-center justify-center font-bold text-xl shadow-sm"
+              className="h-10 w-10 rounded-xl bg-[#365CF5] text-white flex items-center justify-center font-bold text-xl shadow-xs"
               aria-hidden="true"
             >
               M
             </div>
-            <span className="text-2xl font-bold tracking-tight text-stone-900">
+            <span className="text-2xl font-bold tracking-tight text-[#111827]">
               MyNotes
             </span>
           </div>
 
           {/* Card */}
-          <div className="rounded-2xl border border-stone-200 bg-white px-8 py-8 shadow-sm">
-            <h1 className="text-xl font-semibold text-stone-900 mb-1">
+          <div className="rounded-2xl border border-[#E6EAF2] bg-white px-8 py-8 shadow-xs">
+            <h1 className="text-xl font-bold text-[#111827] mb-1">
               Create your account
             </h1>
-            <p className="text-sm text-stone-500 mb-6">
+            <p className="text-sm text-[#667085] mb-6">
               Set up your private, local MyNotes workspace.
             </p>
 
@@ -153,10 +153,10 @@ export default function RegisterPage() {
                 id={errorId}
                 role="alert"
                 aria-live="assertive"
-                className="mb-5 flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+                className="mb-5 flex items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
               >
                 <svg
-                  className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-600"
+                  className="mt-0.5 h-4 w-4 flex-shrink-0 text-rose-600"
                   viewBox="0 0 20 20"
                   fill="currentColor"
                   aria-hidden="true"
@@ -181,7 +181,7 @@ export default function RegisterPage() {
               <div className="mb-4">
                 <label
                   htmlFor={emailId}
-                  className="block text-sm font-medium text-stone-700 mb-1.5"
+                  className="block text-sm font-medium text-slate-700 mb-1.5"
                 >
                   Email address
                 </label>
@@ -194,7 +194,7 @@ export default function RegisterPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isSubmitting}
                   placeholder="you@example.com"
-                  className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 shadow-xs transition-colors focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
+                  className="w-full rounded-lg border border-[#DCE3EF] bg-white px-3.5 py-2.5 text-sm text-[#182230] placeholder:text-[#8A94A6] shadow-xs transition-colors focus:border-[#365CF5] focus:outline-none focus:ring-2 focus:ring-[#365CF5] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
                   aria-required="true"
                 />
               </div>
@@ -203,7 +203,7 @@ export default function RegisterPage() {
               <div className="mb-4">
                 <label
                   htmlFor={passwordId}
-                  className="block text-sm font-medium text-stone-700 mb-1.5"
+                  className="block text-sm font-medium text-slate-700 mb-1.5"
                 >
                   Password
                 </label>
@@ -217,7 +217,7 @@ export default function RegisterPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={isSubmitting}
                     placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
-                    className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 pr-10 text-sm text-stone-900 placeholder:text-stone-400 shadow-xs transition-colors focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
+                    className="w-full rounded-lg border border-[#DCE3EF] bg-white px-3.5 py-2.5 pr-10 text-sm text-[#182230] placeholder:text-[#8A94A6] shadow-xs transition-colors focus:border-[#365CF5] focus:outline-none focus:ring-2 focus:ring-[#365CF5] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
                     aria-required="true"
                     aria-describedby="password-hint password-strength-label"
                     minLength={MIN_PASSWORD_LENGTH}
@@ -226,7 +226,7 @@ export default function RegisterPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-stone-400 hover:text-stone-600 focus-visible:outline-2 focus-visible:outline-teal-700"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-slate-600 focus-visible:outline-2 focus-visible:outline-[#365CF5]"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? (
@@ -246,7 +246,7 @@ export default function RegisterPage() {
                 {password.length > 0 && (
                   <div className="mt-2" aria-live="polite">
                     <div
-                      className="h-1.5 w-full rounded-full bg-stone-200 overflow-hidden"
+                      className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden"
                       role="progressbar"
                       aria-valuenow={
                         strength.level === 'weak' ? 25
@@ -265,9 +265,10 @@ export default function RegisterPage() {
                     <p
                       id="password-strength-label"
                       className={`mt-1 text-xs font-medium ${
-                        strength.level === 'weak' ? 'text-red-600'
+                        strength.level === 'weak' ? 'text-rose-600'
                         : strength.level === 'fair' ? 'text-amber-600'
-                        : 'text-teal-700'
+                        : strength.level === 'good' ? 'text-sky-600'
+                        : 'text-[#365CF5]'
                       }`}
                     >
                       {strength.label}
@@ -275,7 +276,7 @@ export default function RegisterPage() {
                   </div>
                 )}
 
-                <p id="password-hint" className="mt-1.5 text-xs text-stone-500">
+                <p id="password-hint" className="mt-1.5 text-xs text-slate-500">
                   {MIN_PASSWORD_LENGTH}–{MAX_PASSWORD_LENGTH} characters. Spaces and Unicode accepted.
                 </p>
               </div>
@@ -284,7 +285,7 @@ export default function RegisterPage() {
               <div className="mb-6">
                 <label
                   htmlFor={confirmPasswordId}
-                  className="block text-sm font-medium text-stone-700 mb-1.5"
+                  className="block text-sm font-medium text-slate-700 mb-1.5"
                 >
                   Confirm password
                 </label>
@@ -297,17 +298,17 @@ export default function RegisterPage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   disabled={isSubmitting}
                   placeholder="Re-enter your password"
-                  className={`w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 shadow-xs transition-colors focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500 ${
+                  className={`w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-[#111827] placeholder:text-[#8A94A6] shadow-2xs transition-colors focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:bg-[#F4F6FB] disabled:text-[#8A94A6] ${
                     !passwordsMatch && confirmPassword
-                      ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20'
-                      : 'border-stone-300 focus:border-teal-600 focus:ring-teal-600/20'
+                      ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20'
+                      : 'border-[#DCE3EF] focus:border-[#365CF5] focus:ring-[#A5B4FC]/40'
                   }`}
                   aria-required="true"
                   aria-invalid={!passwordsMatch && confirmPassword ? 'true' : 'false'}
                   aria-describedby={!passwordsMatch && confirmPassword ? 'confirm-password-error' : undefined}
                 />
                 {!passwordsMatch && confirmPassword && (
-                  <p id="confirm-password-error" className="mt-1 text-xs text-red-600" role="alert">
+                  <p id="confirm-password-error" className="mt-1 text-xs text-rose-600" role="alert">
                     Passwords do not match.
                   </p>
                 )}
@@ -318,7 +319,7 @@ export default function RegisterPage() {
                 type="submit"
                 id="register-submit-btn"
                 disabled={isSubmitting}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-teal-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#365CF5] px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-[#2848D8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A5B4FC] disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
               >
                 {isSubmitting ? (
                   <>
@@ -334,11 +335,11 @@ export default function RegisterPage() {
               </button>
             </form>
 
-            <p className="mt-6 text-center text-sm text-stone-500">
+            <p className="mt-6 text-center text-sm text-[#667085]">
               Already have an account?{' '}
               <Link
                 to="/login"
-                className="font-medium text-teal-700 hover:text-teal-800 hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700 rounded"
+                className="font-medium text-[#365CF5] hover:text-[#2848D8] hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#A5B4FC] rounded"
               >
                 Sign in
               </Link>
@@ -347,7 +348,7 @@ export default function RegisterPage() {
         </div>
       </main>
 
-      <footer className="py-4 text-center text-xs text-stone-400">
+      <footer className="py-4 text-center text-xs text-slate-400">
         MyNotes &mdash; Running locally
       </footer>
     </div>

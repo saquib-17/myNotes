@@ -2984,3 +2984,607 @@ export async function deleteJournalEntry(date, csrfOrOptions) {
 
   return true;
 }
+
+
+
+
+// ---------------------------------------------------------------------------
+// Dashboard Overview API
+// ---------------------------------------------------------------------------
+
+export const DASHBOARD_API_BASE = '/api/dashboard';
+
+/**
+ * Fetches the dashboard overview summary for the authenticated user and active workspace.
+ *
+ * @param {object} [options]
+ * @param {string} [options.date]
+ * @param {string} [options.workspaceId]
+ * @param {AbortSignal} [options.signal]
+ * @returns {Promise<object>}
+ */
+export async function fetchDashboardOverview({ date, workspaceId, signal } = {}) {
+  const params = new URLSearchParams();
+  if (date) params.set('date', date);
+  const resolvedWsId = workspaceId || getStoredActiveWorkspaceId();
+  if (resolvedWsId) {
+    params.set('workspaceId', resolvedWsId);
+  }
+
+  const url = params.toString() ? `${DASHBOARD_API_BASE}?${params.toString()}` : DASHBOARD_API_BASE;
+  const headers = { Accept: 'application/json' };
+  if (resolvedWsId) {
+    headers['x-workspace-id'] = resolvedWsId;
+  }
+
+  const response = await fetch(url, {
+    method: 'GET',
+    credentials: 'include',
+    headers,
+    signal,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to fetch dashboard overview (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+
+// ---------------------------------------------------------------------------
+// Workspaces API & Storage Helpers
+// ---------------------------------------------------------------------------
+
+export const WORKSPACES_API_BASE = '/api/workspaces';
+export const ACTIVE_WORKSPACE_KEY = 'mynotes.activeWorkspaceId';
+
+export const WORKSPACE_LIMITS = {
+  MIN_NAME_LENGTH: 1,
+  MAX_NAME_LENGTH: 60,
+  STORAGE_KEY: ACTIVE_WORKSPACE_KEY,
+};
+
+/**
+ * Validates and normalizes a workspace name on the client.
+ *
+ * @param {string} name
+ * @returns {string} Normalized workspace name
+ */
+export function validateClientWorkspaceName(name) {
+  if (typeof name !== 'string') {
+    throw new Error('Workspace name must be a string.');
+  }
+  const normalized = name.trim().replace(/\s+/g, ' ');
+  if (!normalized) {
+    throw new Error('Workspace name cannot be empty.');
+  }
+  if (normalized.length > WORKSPACE_LIMITS.MAX_NAME_LENGTH) {
+    throw new Error(`Workspace name cannot exceed ${WORKSPACE_LIMITS.MAX_NAME_LENGTH} characters.`);
+  }
+  return normalized;
+}
+
+
+/**
+ * Retrieves the stored active workspace ID from localStorage.
+ *
+ * @returns {string|null}
+ */
+export function getStoredActiveWorkspaceId() {
+  if (typeof window === 'undefined' || !window.localStorage) return null;
+  try {
+    const val = window.localStorage.getItem(ACTIVE_WORKSPACE_KEY);
+    return val && typeof val === 'string' && val.trim() ? val.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Stores the active workspace ID into localStorage.
+ *
+ * @param {string|null} id
+ */
+export function setStoredActiveWorkspaceId(id) {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    if (id && typeof id === 'string' && id.trim()) {
+      window.localStorage.setItem(ACTIVE_WORKSPACE_KEY, id.trim());
+    } else {
+      window.localStorage.removeItem(ACTIVE_WORKSPACE_KEY);
+    }
+  } catch {
+    // Ignore localStorage access failures
+  }
+}
+
+/**
+ * Fetches all active workspaces for the authenticated user.
+ *
+ * @param {object} [options]
+ * @param {AbortSignal} [options.signal]
+ * @returns {Promise<{ workspaces: Array<object> }>}
+ */
+export async function fetchWorkspaces({ signal } = {}) {
+  const response = await fetch(WORKSPACES_API_BASE, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to fetch workspaces (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return {
+    workspaces: Array.isArray(data.workspaces) ? data.workspaces : [],
+  };
+}
+
+/**
+ * Creates a new workspace.
+ *
+ * @param {object} params
+ * @param {string} params.name
+ * @param {boolean} [params.isDefault]
+ * @param {string} params.csrfToken
+ * @returns {Promise<{ workspace: object }>}
+ */
+export async function createWorkspace({ name, isDefault = false, csrfToken }) {
+  if (!csrfToken) {
+    throw new Error('CSRF token is required to create a workspace.');
+  }
+
+  const response = await fetch(WORKSPACES_API_BASE, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Csrf-Token': csrfToken,
+    },
+    body: JSON.stringify({
+      name,
+      isDefault: Boolean(isDefault),
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to create workspace (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Renames an existing workspace.
+ *
+ * @param {string} id
+ * @param {object} params
+ * @param {string} params.name
+ * @param {string} params.csrfToken
+ * @returns {Promise<{ workspace: object }>}
+ */
+export async function updateWorkspace(id, { name, csrfToken }) {
+  if (!id) {
+    throw new Error('Workspace ID is required.');
+  }
+  if (!csrfToken) {
+    throw new Error('CSRF token is required to rename a workspace.');
+  }
+
+  const response = await fetch(`${WORKSPACES_API_BASE}/${id}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Csrf-Token': csrfToken,
+    },
+    body: JSON.stringify({ name }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to update workspace (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Soft-deletes a non-default workspace.
+ *
+ * @param {string} id
+ * @param {object} params
+ * @param {string} params.csrfToken
+ * @returns {Promise<boolean>}
+ */
+export async function deleteWorkspace(id, { csrfToken } = {}) {
+  if (!id) {
+    throw new Error('Workspace ID is required.');
+  }
+  if (!csrfToken) {
+    throw new Error('CSRF token is required to delete a workspace.');
+  }
+
+  const response = await fetch(`${WORKSPACES_API_BASE}/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers: {
+      'X-Csrf-Token': csrfToken,
+    },
+  });
+
+  if (!response.ok) {
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+    throw new ApiError(
+      data?.message || `Failed to delete workspace (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return true;
+}
+
+/**
+ * Sets a workspace as default.
+ *
+ * @param {string} id
+ * @param {string|object} csrfOrOptions
+ * @returns {Promise<{ workspace: object }>}
+ */
+export async function setDefaultWorkspace(id, csrfOrOptions) {
+  if (!id) {
+    throw new Error('Workspace ID is required.');
+  }
+  let csrfToken = null;
+  if (typeof csrfOrOptions === 'string') {
+    csrfToken = csrfOrOptions;
+  } else if (csrfOrOptions && typeof csrfOrOptions === 'object') {
+    csrfToken = csrfOrOptions.csrfToken;
+  }
+  if (!csrfToken) {
+    throw new Error('CSRF token is required to set default workspace.');
+  }
+
+  const response = await fetch(`${WORKSPACES_API_BASE}/${id}/set-default`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'X-Csrf-Token': csrfToken,
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to set default workspace (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+// ---------------------------------------------------------------------------
+// Global Search API
+// ---------------------------------------------------------------------------
+
+export const SEARCH_API_BASE = '/api/search';
+
+/**
+ * Performs workspace-scoped global search across notes, tasks, questions, documents, revision items, and doubts.
+ *
+ * @param {object} [params]
+ * @param {string} [params.q]
+ * @param {string} [params.type='all']
+ * @param {number} [params.limit=20]
+ * @param {number} [params.offset=0]
+ * @param {string} [params.workspaceId]
+ * @param {AbortSignal} [params.signal]
+ * @returns {Promise<object>}
+ */
+export async function globalSearch({
+  q,
+  type = 'all',
+  limit = 20,
+  offset = 0,
+  workspaceId,
+  signal,
+} = {}) {
+  const params = new URLSearchParams();
+  if (q !== undefined && q !== null) params.set('q', String(q));
+  if (type) params.set('type', String(type));
+  if (limit !== undefined && limit !== null) params.set('limit', String(limit));
+  if (offset !== undefined && offset !== null) params.set('offset', String(offset));
+
+  const resolvedWsId = workspaceId || getStoredActiveWorkspaceId();
+  if (resolvedWsId) {
+    params.set('workspaceId', resolvedWsId);
+  }
+
+  const url = `${SEARCH_API_BASE}?${params.toString()}`;
+  const headers = { Accept: 'application/json' };
+  if (resolvedWsId) {
+    headers['x-workspace-id'] = resolvedWsId;
+  }
+
+  const response = await fetch(url, {
+    method: 'GET',
+    credentials: 'include',
+    headers,
+    signal,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to perform search (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return {
+    query: data.query || '',
+    workspaceId: data.workspaceId,
+    type: data.type || 'all',
+    total: typeof data.total === 'number' ? data.total : 0,
+    limit: typeof data.limit === 'number' ? data.limit : limit,
+    offset: typeof data.offset === 'number' ? data.offset : offset,
+    hasMore: Boolean(data.hasMore),
+    results: Array.isArray(data.results) ? data.results : [],
+  };
+}
+
+
+// ---------------------------------------------------------------------------
+// Profile & Settings API
+// ---------------------------------------------------------------------------
+
+export const PROFILE_API_BASE = '/api/profile';
+
+/**
+ * Fetches the safe user profile.
+ *
+ * @param {object} [options]
+ * @param {AbortSignal} [options.signal]
+ * @returns {Promise<{ id: string, email: string, name: string|null, displayName: string|null, createdAt: string }>}
+ */
+export async function fetchProfile({ signal } = {}) {
+  const response = await fetch(PROFILE_API_BASE, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to fetch profile (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data.user || data;
+}
+
+/**
+ * Updates the user's display name.
+ *
+ * @param {object} params
+ * @param {string} params.name
+ * @param {string} params.csrfToken
+ * @returns {Promise<{ id: string, email: string, name: string|null, displayName: string|null, createdAt: string }>}
+ */
+export async function updateProfile({ name, csrfToken }) {
+  if (!csrfToken) {
+    throw new Error('CSRF token is required to update profile.');
+  }
+
+  const response = await fetch(PROFILE_API_BASE, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Csrf-Token': csrfToken,
+    },
+    body: JSON.stringify({ name }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to update profile (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data.user || data;
+}
+
+/**
+ * Changes the user's password.
+ *
+ * @param {object} params
+ * @param {string} params.currentPassword
+ * @param {string} params.newPassword
+ * @param {string} params.confirmPassword
+ * @param {string} params.csrfToken
+ * @returns {Promise<{ success: boolean, message: string }>}
+ */
+export async function changePassword({
+  currentPassword,
+  newPassword,
+  confirmPassword,
+  csrfToken,
+}) {
+  if (!csrfToken) {
+    throw new Error('CSRF token is required to change password.');
+  }
+
+  const response = await fetch(`${PROFILE_API_BASE}/change-password`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Csrf-Token': csrfToken,
+    },
+    body: JSON.stringify({
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to change password (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Fetches active sessions for the current user.
+ *
+ * @param {object} [options]
+ * @param {AbortSignal} [options.signal]
+ * @returns {Promise<{ sessions: Array<object>, total: number }>}
+ */
+export async function fetchSessions({ signal } = {}) {
+  const response = await fetch(`${PROFILE_API_BASE}/sessions`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to fetch sessions (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return {
+    sessions: Array.isArray(data.sessions) ? data.sessions : [],
+    total: typeof data.total === 'number' ? data.total : (data.sessions?.length || 0),
+  };
+}
+
+/**
+ * Signs out the current session.
+ *
+ * @param {object} params
+ * @param {string} params.csrfToken
+ * @returns {Promise<boolean>}
+ */
+export async function logoutCurrentSession({ csrfToken } = {}) {
+  if (!csrfToken) {
+    throw new Error('CSRF token is required to sign out current session.');
+  }
+
+  const response = await fetch(`${PROFILE_API_BASE}/sessions/logout-current`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'X-Csrf-Token': csrfToken,
+    },
+  });
+
+  if (!response.ok) {
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+    throw new ApiError(
+      data?.message || `Failed to sign out current session (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return true;
+}
+
+/**
+ * Signs out all other sessions for the user.
+ *
+ * @param {object} params
+ * @param {string} params.csrfToken
+ * @returns {Promise<{ count: number, success: boolean, message: string }>}
+ */
+export async function logoutOtherSessions({ csrfToken } = {}) {
+  if (!csrfToken) {
+    throw new Error('CSRF token is required to sign out other sessions.');
+  }
+
+  const response = await fetch(`${PROFILE_API_BASE}/sessions/logout-others`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'X-Csrf-Token': csrfToken,
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || `Failed to sign out other sessions (HTTP ${response.status})`,
+      response.status,
+      data?.code || data?.error
+    );
+  }
+
+  return data;
+}

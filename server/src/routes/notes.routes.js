@@ -11,6 +11,7 @@ import {
 import * as defaultNoteRepo from '../notes/noteRepository.js';
 import * as defaultCollectionRepo from '../collections/collectionRepository.js';
 import * as defaultTagRepo from '../tags/tagRepository.js';
+import { resolveWorkspaceId } from '../workspaces/workspaceResolution.js';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -28,6 +29,7 @@ export function createNotesRouter({
   noteRepository = defaultNoteRepo,
   collectionRepository = defaultCollectionRepo,
   tagRepository = defaultTagRepo,
+  resolveWorkspace = resolveWorkspaceId,
   requireAuthMiddleware = defaultRequireAuth,
 } = {}) {
   const router = Router();
@@ -60,7 +62,7 @@ export function createNotesRouter({
       }
 
       // Strict property whitelist: reject unknown fields (e.g. user_id, version)
-      const allowedKeys = new Set(['title', 'content', 'pinned', 'collectionId', 'tags']);
+      const allowedKeys = new Set(['title', 'content', 'pinned', 'collectionId', 'tags', 'workspaceId']);
       for (const key of Object.keys(req.body)) {
         if (!allowedKeys.has(key)) {
           return res.status(400).json({
@@ -71,6 +73,7 @@ export function createNotesRouter({
       }
 
       const { title, content, pinned, collectionId, tags } = req.body;
+      const workspaceId = await resolveWorkspace(req);
 
       if (pinned !== undefined && typeof pinned !== 'boolean') {
         return res.status(400).json({
@@ -130,6 +133,7 @@ export function createNotesRouter({
 
       const createdNote = await noteRepository.createNote({
         userId: req.user.id,
+        workspaceId,
         title: normalizedTitle,
         contentJson: content,
         contentText,
@@ -225,9 +229,11 @@ export function createNotesRouter({
         });
       }
       const parsedOffset = parseInt(offset, 10);
+      const workspaceId = await resolveWorkspace(req);
 
       const result = await noteRepository.findNotesByUserId({
         userId: req.user.id,
+        workspaceId,
         q,
         collectionId: collectionId ? collectionId.trim() : undefined,
         tagId: tagId ? tagId.trim() : undefined,
@@ -296,9 +302,11 @@ export function createNotesRouter({
         });
       }
       const parsedOffset = parseInt(offset, 10);
+      const workspaceId = await resolveWorkspace(req);
 
       const result = await noteRepository.findTrashedNotesByUserId({
         userId: req.user.id,
+        workspaceId,
         limit: parsedLimit,
         offset: parsedOffset,
       });
@@ -348,9 +356,11 @@ export function createNotesRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const note = await noteRepository.findNoteByIdAndUserId({
         id,
         userId: req.user.id,
+        workspaceId,
       });
 
       if (!note) {
@@ -393,7 +403,7 @@ export function createNotesRouter({
       }
 
       // Reject unknown fields
-      const allowedKeys = new Set(['title', 'content', 'expectedVersion', 'pinned', 'collectionId', 'tags']);
+      const allowedKeys = new Set(['title', 'content', 'expectedVersion', 'pinned', 'collectionId', 'tags', 'workspaceId']);
       for (const key of Object.keys(req.body)) {
         if (!allowedKeys.has(key)) {
           return res.status(400).json({
@@ -404,6 +414,7 @@ export function createNotesRouter({
       }
 
       const { title, content, expectedVersion, pinned, collectionId, tags } = req.body;
+      const workspaceId = await resolveWorkspace(req);
 
       if (pinned !== undefined && typeof pinned !== 'boolean') {
         return res.status(400).json({
@@ -478,6 +489,7 @@ export function createNotesRouter({
       const updateResult = await noteRepository.updateNote({
         id,
         userId: req.user.id,
+        workspaceId,
         expectedVersion,
         title: normalizedTitle,
         contentJson: content,
@@ -533,9 +545,11 @@ export function createNotesRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const result = await noteRepository.setNotePinned({
         id,
         userId: req.user.id,
+        workspaceId,
         pinned: true,
       });
 
@@ -566,9 +580,11 @@ export function createNotesRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const result = await noteRepository.setNotePinned({
         id,
         userId: req.user.id,
+        workspaceId,
         pinned: false,
       });
 
@@ -634,9 +650,11 @@ export function createNotesRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const trashResult = await noteRepository.trashNote({
         id,
         userId: req.user.id,
+        workspaceId,
         expectedVersion,
       });
 
@@ -677,9 +695,11 @@ export function createNotesRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const result = await noteRepository.restoreNote({
         id,
         userId: req.user.id,
+        workspaceId,
       });
 
       if (result.notFound) {

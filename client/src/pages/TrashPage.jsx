@@ -148,20 +148,20 @@ export default function TrashPage() {
   const currentEnd = Math.min(offset + PAGE_SIZE, total);
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="w-full space-y-4 sm:space-y-5">
       {/* Top Header / Description */}
-      <div className="flex items-center justify-between gap-4 pb-1">
-        <div className="text-sm text-stone-500">
+      <div className="flex items-center justify-between gap-3 pb-1">
+        <div className="text-xs sm:text-sm text-slate-500">
           <span>Deleted notes are preserved safely here. You can restore them anytime.</span>
         </div>
 
         <div>
           <Link
             to="/notes"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-600 hover:text-stone-900 py-1.5 px-3 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 py-1.5 px-3 rounded-lg border border-slate-200/90 bg-white hover:bg-slate-50 transition-colors shadow-2xs"
           >
             <svg
-              className="h-4 w-4"
+              className="h-3.5 w-3.5"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -179,7 +179,7 @@ export default function TrashPage() {
       {restoreSuccess && (
         <div
           role="status"
-          className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 flex items-center justify-between gap-3"
+          className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 flex items-center justify-between gap-3 shadow-xs"
         >
           <div className="flex items-center gap-2.5">
             <svg
@@ -217,11 +217,11 @@ export default function TrashPage() {
       {restoreError && (
         <div
           role="alert"
-          className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 flex items-center justify-between gap-3"
+          className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900 flex items-center justify-between gap-3 shadow-xs"
         >
           <div className="flex items-center gap-2">
             <svg
-              className="h-4 w-4 text-red-500 flex-shrink-0"
+              className="h-4 w-4 text-rose-500 flex-shrink-0"
               viewBox="0 0 20 20"
               fill="currentColor"
               aria-hidden="true"
@@ -237,7 +237,7 @@ export default function TrashPage() {
           <button
             type="button"
             onClick={() => setRestoreError(null)}
-            className="text-xs font-semibold text-red-700 hover:text-red-900 underline"
+            className="text-xs font-semibold text-rose-700 hover:text-rose-900 underline"
           >
             Dismiss
           </button>
@@ -286,17 +286,17 @@ export default function TrashPage() {
               return (
                 <div
                   key={note.id}
-                  className="flex flex-col justify-between rounded-xl border border-stone-200 bg-white p-5 shadow-2xs"
+                  className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-2xs hover:border-slate-300 transition-colors"
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <h2 className="text-base font-semibold text-stone-900 line-clamp-1">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <h2 className="text-sm sm:text-base font-semibold text-slate-900 line-clamp-1">
                           {note.title || "Untitled note"}
                         </h2>
                         {isPinned && (
                           <span
-                            className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 border border-amber-200 flex-shrink-0"
+                            className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 border border-amber-200 flex-shrink-0"
                             title="This note was pinned before deletion and will remain pinned when restored"
                           >
                             <svg
@@ -320,7 +320,7 @@ export default function TrashPage() {
                         disabled={isActionInFlight}
                         onClick={() => handleRestore(note)}
                         aria-label={`Restore note "${note.title || "Untitled note"}"`}
-                        className={`inline-flex items-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-800 shadow-2xs transition-colors hover:bg-teal-100 focus:outline-none focus:ring-2 focus:ring-teal-600 ${
+                        className={`inline-flex items-center gap-1.5 rounded-lg border border-[#365CF5]/20 bg-[#EEF3FF] px-2.5 py-1 text-xs font-semibold text-[#2948D8] shadow-2xs transition-colors hover:bg-[#E2E8FF] focus:outline-none focus:ring-2 focus:ring-[#365CF5]/20 ${
                           isActionInFlight ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
                         }`}
                       >
@@ -342,14 +342,14 @@ export default function TrashPage() {
                       </button>
                     </div>
 
-                    <p className="mt-2 text-sm text-stone-500 line-clamp-2 leading-relaxed min-h-[2.5rem]">
-                      {note.preview || <span className="italic text-stone-400">Empty note</span>}
+                    <p className="mt-1.5 text-xs text-slate-500 line-clamp-2 leading-relaxed min-h-[2rem]">
+                      {note.preview || <span className="italic text-slate-400">Empty note</span>}
                     </p>
                   </div>
 
-                  <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs text-stone-400">
+                  <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
                     <span>Deleted {formatTimestamp(note.deletedAt)}</span>
-                    <span className="font-mono text-[11px] text-stone-300">v{note.version}</span>
+                    <span className="font-mono text-[11px] text-slate-400">v{note.version}</span>
                   </div>
                 </div>
               );
@@ -357,11 +357,11 @@ export default function TrashPage() {
           </div>
 
           {/* Pagination Toolbar */}
-          <div className="flex items-center justify-between border-t border-stone-200 pt-4 text-sm text-stone-600">
+          <div className="flex items-center justify-between border-t border-slate-200 pt-4 text-sm text-slate-600">
             <div>
-              Showing <span className="font-medium text-stone-900">{currentStart}</span> to{" "}
-              <span className="font-medium text-stone-900">{currentEnd}</span> of{" "}
-              <span className="font-medium text-stone-900">{total}</span> notes
+              Showing <span className="font-medium text-slate-900">{currentStart}</span> to{" "}
+              <span className="font-medium text-slate-900">{currentEnd}</span> of{" "}
+              <span className="font-medium text-slate-900">{total}</span> notes
             </div>
 
             <div className="flex items-center gap-2">
@@ -369,7 +369,7 @@ export default function TrashPage() {
                 type="button"
                 disabled={offset === 0 || isLoading}
                 onClick={() => setOffset((prev) => Math.max(0, prev - PAGE_SIZE))}
-                className="inline-flex items-center rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 Previous
               </button>
@@ -378,7 +378,7 @@ export default function TrashPage() {
                 type="button"
                 disabled={!hasMore || offset + PAGE_SIZE >= total || isLoading}
                 onClick={() => setOffset((prev) => prev + PAGE_SIZE)}
-                className="inline-flex items-center rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 Next
               </button>

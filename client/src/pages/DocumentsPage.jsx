@@ -33,17 +33,17 @@ function getCategoryBadgeClass(category) {
     case "pdf":
       return "bg-rose-50 text-rose-700 border-rose-200";
     case "article":
-      return "bg-blue-50 text-blue-700 border-blue-200";
+      return "bg-sky-50 text-sky-700 border-sky-200";
     case "documentation":
-      return "bg-teal-50 text-teal-800 border-teal-200";
+      return "bg-[#EEF3FF] text-[#2948D8] border-[#C7D7FE]";
     case "course":
       return "bg-purple-50 text-purple-700 border-purple-200";
     case "video":
       return "bg-amber-50 text-amber-800 border-amber-200";
     case "repository":
-      return "bg-stone-100 text-stone-800 border-stone-300";
+      return "bg-slate-100 text-slate-800 border-slate-300";
     default:
-      return "bg-stone-50 text-stone-600 border-stone-200";
+      return "bg-slate-50 text-slate-600 border-slate-200";
   }
 }
 
@@ -357,20 +357,20 @@ export default function DocumentsPage() {
     categoryFilter !== "all" || topicFilter.trim() !== "" || favoriteFilter || debouncedQuery !== "";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5">
       {/* Top Banner Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-[#E6EAF2] pb-2.5">
         <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-800 border border-teal-200">
-              <span className="h-1.5 w-1.5 rounded-full bg-teal-600" aria-hidden="true" />
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EEF3FF] px-2.5 py-0.5 text-xs font-semibold text-[#2948D8] border border-[#C7D7FE]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#365CF5]" aria-hidden="true" />
               Total: {total}
             </span>
-            <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 border border-amber-200">
+            <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800 border border-amber-200">
               ★ Favorites: {favoritesCount}
             </span>
           </div>
-          <p className="mt-1 text-xs text-stone-500">
+          <p className="mt-1 text-xs text-[#667085]">
             Store and reference important documents here.
           </p>
         </div>
@@ -379,9 +379,9 @@ export default function DocumentsPage() {
           <button
             type="button"
             onClick={handleOpenCreate}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-teal-800 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-teal-700 focus-visible:outline-2 focus-visible:outline-teal-800 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[#365CF5] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-[#2848D8] focus-visible:outline-2 focus-visible:outline-[#A5B4FC] transition-colors cursor-pointer"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
             Add Document
@@ -393,7 +393,7 @@ export default function DocumentsPage() {
       {operationError && (
         <div
           role="alert"
-          className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800 flex items-start justify-between"
+          className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 flex items-start justify-between"
         >
           <span>{operationError}</span>
           <button
@@ -407,8 +407,8 @@ export default function DocumentsPage() {
       )}
 
       {/* Filter and Search Bar */}
-      <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-2xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="rounded-xl border border-slate-200/90 bg-white p-2.5 sm:p-3 shadow-2xs space-y-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
           {/* Search Input */}
           <div className="relative">
             <label htmlFor="doc-search-input" className="sr-only">
@@ -420,10 +420,10 @@ export default function DocumentsPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by title, url, topic..."
-              className="w-full rounded-xl border border-stone-300 bg-stone-50/50 px-3 py-2 pl-9 text-xs text-stone-800 placeholder-stone-400 focus:border-teal-700 focus:bg-white focus:outline-none"
+              className="w-full rounded-xl border border-[#DCE3EF] bg-white px-3 py-1.5 pl-8 text-xs text-[#111827] placeholder-[#8A94A6] focus:border-[#365CF5] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40"
             />
             <svg
-              className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-stone-400"
+              className="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-[#8A94A6]"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -441,7 +441,7 @@ export default function DocumentsPage() {
               id="doc-category-filter"
               value={categoryFilter}
               onChange={handleCategoryChange}
-              className="w-full rounded-xl border border-stone-300 bg-stone-50/50 px-3 py-2 text-xs text-stone-800 focus:border-teal-700 focus:bg-white focus:outline-none"
+              className="w-full rounded-xl border border-[#DCE3EF] bg-white px-2.5 py-1.5 text-xs text-[#111827] focus:border-[#365CF5] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40"
             >
               <option value="all">All Categories</option>
               <option value="pdf">PDF</option>
@@ -465,7 +465,7 @@ export default function DocumentsPage() {
               value={topicFilter}
               onChange={handleTopicChange}
               placeholder="Filter by topic..."
-              className="w-full rounded-xl border border-stone-300 bg-stone-50/50 px-3 py-2 text-xs text-stone-800 placeholder-stone-400 focus:border-teal-700 focus:bg-white focus:outline-none"
+              className="w-full rounded-xl border border-[#DCE3EF] bg-white px-2.5 py-1.5 text-xs text-[#111827] placeholder-[#8A94A6] focus:border-[#365CF5] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40"
             />
           </div>
 
@@ -474,10 +474,10 @@ export default function DocumentsPage() {
             <button
               type="button"
               onClick={handleFavoriteToggle}
-              className={`flex-1 rounded-xl px-3 py-2 text-xs font-semibold border transition-colors ${
+              className={`flex-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold border transition-colors ${
                 favoriteFilter
                   ? "bg-amber-50 border-amber-300 text-amber-800 shadow-2xs"
-                  : "bg-white border-stone-300 text-stone-700 hover:bg-stone-50"
+                  : "bg-white border-slate-300/80 text-slate-700 hover:bg-slate-50"
               }`}
             >
               ★ Favorites Only
@@ -487,7 +487,7 @@ export default function DocumentsPage() {
               <button
                 type="button"
                 onClick={handleClearFilters}
-                className="rounded-xl border border-stone-200 bg-stone-100 px-3 py-2 text-xs font-medium text-stone-600 hover:bg-stone-200 transition-colors"
+                className="rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"
                 title="Clear all filters"
               >
                 Reset
@@ -499,7 +499,7 @@ export default function DocumentsPage() {
 
       {/* Main Content Area */}
       {isLoading ? (
-        <div className="py-12 text-center text-xs text-stone-500">
+        <div className="py-12 text-center text-xs text-slate-500">
           Loading documents...
         </div>
       ) : error ? (
@@ -509,7 +509,7 @@ export default function DocumentsPage() {
           <button
             type="button"
             onClick={() => loadDocuments(offset)}
-            className="mt-4 rounded-xl bg-rose-800 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 transition-colors"
+            className="mt-4 rounded-xl bg-rose-600 hover:bg-rose-700 px-4 py-2 text-xs font-semibold text-white transition-colors"
           >
             Retry
           </button>
@@ -547,11 +547,11 @@ export default function DocumentsPage() {
         )
       ) : (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {documents.map((doc) => (
               <div
                 key={doc.id}
-                className="group relative flex flex-col justify-between rounded-2xl border border-stone-200 bg-white p-5 shadow-2xs hover:shadow-xs transition-shadow"
+                className="group relative flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-2xs hover:shadow-xs hover:border-slate-300 transition-all"
               >
                 <div>
                   {/* Card Header: Category badge, Topic badge, and Favorite Star */}
@@ -565,7 +565,7 @@ export default function DocumentsPage() {
                         {doc.category || "other"}
                       </span>
                       {doc.topic && (
-                        <span className="inline-flex items-center rounded-md bg-stone-100 px-2 py-0.5 text-2xs font-medium text-stone-700 border border-stone-200">
+                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-2xs font-medium text-slate-700 border border-slate-200">
                           {doc.topic}
                         </span>
                       )}
@@ -578,7 +578,7 @@ export default function DocumentsPage() {
                       className={`rounded-lg p-1 text-sm transition-colors ${
                         doc.favorite
                           ? "text-amber-500 hover:text-amber-600"
-                          : "text-stone-300 hover:text-stone-400"
+                          : "text-slate-300 hover:text-slate-400"
                       }`}
                     >
                       {doc.favorite ? "★" : "☆"}
@@ -586,7 +586,7 @@ export default function DocumentsPage() {
                   </div>
 
                   {/* Title as Safe External Link */}
-                  <h2 className="text-sm font-semibold text-stone-900 group-hover:text-teal-900 line-clamp-2">
+                  <h2 className="text-sm font-semibold text-[#182230] group-hover:text-[#365CF5] line-clamp-2">
                     <a
                       href={doc.url}
                       target="_blank"
@@ -595,7 +595,7 @@ export default function DocumentsPage() {
                     >
                       <span>{doc.title}</span>
                       <svg
-                        className="h-3.5 w-3.5 shrink-0 text-stone-400"
+                        className="h-3.5 w-3.5 shrink-0 text-slate-400"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -612,28 +612,29 @@ export default function DocumentsPage() {
                   </h2>
 
                   {/* URL Host Snippet */}
-                  <p className="mt-1 text-2xs text-stone-400 truncate font-mono">
+                  <p className="mt-1 text-2xs text-slate-400 truncate font-mono">
                     {formatUrlHost(doc.url)}
                   </p>
 
                   {/* Description */}
                   {doc.description && (
-                    <p className="mt-2 text-xs text-stone-600 line-clamp-3 leading-relaxed">
+                    <p className="mt-2 text-xs text-slate-600 line-clamp-3 leading-relaxed">
                       {doc.description}
                     </p>
                   )}
                 </div>
 
                 {/* Card Footer: Timestamp & Actions */}
-                <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-2xs text-stone-400">
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-2xs text-slate-400">
                   <span>{formatTimestamp(doc.updatedAt) || ""}</span>
 
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => handleOpenEdit(doc)}
-                      className="rounded-lg p-1.5 text-stone-500 hover:bg-stone-100 hover:text-stone-800 transition-colors"
+                      className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
                       title="Edit document"
+                      aria-label={`Edit document "${doc.title}"`}
                     >
                       <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -642,8 +643,9 @@ export default function DocumentsPage() {
                     <button
                       type="button"
                       onClick={() => handleOpenDelete(doc)}
-                      className="rounded-lg p-1.5 text-stone-500 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                      className="rounded-lg p-1.5 text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors"
                       title="Delete document"
+                      aria-label={`Delete document "${doc.title}"`}
                     >
                       <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -657,7 +659,7 @@ export default function DocumentsPage() {
 
           {/* Pagination Controls */}
           {total > PAGE_SIZE && (
-            <div className="flex items-center justify-between border-t border-stone-200 pt-4 text-xs text-stone-500">
+            <div className="flex items-center justify-between border-t border-slate-200 pt-4 text-xs text-slate-500">
               <span>
                 Showing {offset + 1} to {Math.min(offset + PAGE_SIZE, total)} of {total} documents
               </span>
@@ -666,7 +668,7 @@ export default function DocumentsPage() {
                   type="button"
                   disabled={offset === 0}
                   onClick={() => setOffset((prev) => Math.max(0, prev - PAGE_SIZE))}
-                  className="rounded-xl border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                  className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-colors"
                 >
                   Previous
                 </button>
@@ -674,7 +676,7 @@ export default function DocumentsPage() {
                   type="button"
                   disabled={!hasMore}
                   onClick={() => setOffset((prev) => prev + PAGE_SIZE)}
-                  className="rounded-xl border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                  className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-colors"
                 >
                   Next
                 </button>
@@ -690,17 +692,17 @@ export default function DocumentsPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="doc-form-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-2xs overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto"
         >
-          <div className="w-full max-w-lg rounded-2xl border border-stone-200 bg-white p-6 shadow-xl space-y-4 my-8">
-            <div className="flex items-center justify-between border-b border-stone-200 pb-3">
-              <h2 id="doc-form-title" className="text-sm font-semibold text-stone-900">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl space-y-4 my-8">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <h2 id="doc-form-title" className="text-sm font-semibold text-slate-900">
                 {editingDocument ? "Edit Document" : "Add New Document"}
               </h2>
               <button
                 type="button"
                 onClick={handleCloseForm}
-                className="text-stone-400 hover:text-stone-600 transition-colors"
+                className="text-slate-400 hover:text-slate-600 transition-colors"
               >
                 ✕
               </button>
@@ -715,7 +717,7 @@ export default function DocumentsPage() {
             <form onSubmit={handleSaveDocument} className="space-y-4">
               {/* Title */}
               <div>
-                <label htmlFor="doc-input-title" className="block text-xs font-semibold text-stone-700 mb-1">
+                <label htmlFor="doc-input-title" className="block text-xs font-semibold text-slate-700 mb-1">
                   Title <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -726,13 +728,13 @@ export default function DocumentsPage() {
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
                   placeholder="e.g. React Official Documentation"
-                  className="w-full rounded-xl border border-stone-300 px-3 py-2 text-xs text-stone-800 focus:border-teal-700 focus:outline-none"
+                  className="w-full rounded-xl border border-[#DCE3EF] bg-white px-3 py-2 text-xs text-[#182230] placeholder-[#8A94A6] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#365CF5]"
                 />
               </div>
 
               {/* URL */}
               <div>
-                <label htmlFor="doc-input-url" className="block text-xs font-semibold text-stone-700 mb-1">
+                <label htmlFor="doc-input-url" className="block text-xs font-semibold text-[#182230] mb-1">
                   URL <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -743,21 +745,21 @@ export default function DocumentsPage() {
                   value={formUrl}
                   onChange={(e) => setFormUrl(e.target.value)}
                   placeholder="https://example.com/guide.pdf"
-                  className="w-full rounded-xl border border-stone-300 px-3 py-2 text-xs text-stone-800 focus:border-teal-700 focus:outline-none"
+                  className="w-full rounded-xl border border-[#DCE3EF] bg-white px-3 py-2 text-xs text-[#182230] placeholder-[#8A94A6] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#365CF5]"
                 />
               </div>
 
               {/* Category & Topic */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="doc-input-category" className="block text-xs font-semibold text-stone-700 mb-1">
+                  <label htmlFor="doc-input-category" className="block text-xs font-semibold text-[#182230] mb-1">
                     Category
                   </label>
                   <select
                     id="doc-input-category"
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value)}
-                    className="w-full rounded-xl border border-stone-300 px-3 py-2 text-xs text-stone-800 focus:border-teal-700 focus:outline-none"
+                    className="w-full rounded-xl border border-[#DCE3EF] bg-white px-3 py-2 text-xs text-[#182230] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#365CF5]"
                   >
                     <option value="pdf">PDF</option>
                     <option value="article">Article</option>
@@ -770,7 +772,7 @@ export default function DocumentsPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="doc-input-topic" className="block text-xs font-semibold text-stone-700 mb-1">
+                  <label htmlFor="doc-input-topic" className="block text-xs font-semibold text-[#182230] mb-1">
                     Topic
                   </label>
                   <input
@@ -780,14 +782,14 @@ export default function DocumentsPage() {
                     value={formTopic}
                     onChange={(e) => setFormTopic(e.target.value)}
                     placeholder="e.g. Frontend Architecture"
-                    className="w-full rounded-xl border border-stone-300 px-3 py-2 text-xs text-stone-800 focus:border-teal-700 focus:outline-none"
+                    className="w-full rounded-xl border border-[#DCE3EF] bg-white px-3 py-2 text-xs text-[#182230] placeholder-[#8A94A6] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#365CF5]"
                   />
                 </div>
               </div>
 
               {/* Description */}
               <div>
-                <label htmlFor="doc-input-description" className="block text-xs font-semibold text-stone-700 mb-1">
+                <label htmlFor="doc-input-description" className="block text-xs font-semibold text-[#182230] mb-1">
                   Description
                 </label>
                 <textarea
@@ -797,7 +799,7 @@ export default function DocumentsPage() {
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                   placeholder="Summary or key notes about this resource..."
-                  className="w-full rounded-xl border border-stone-300 px-3 py-2 text-xs text-stone-800 focus:border-teal-700 focus:outline-none"
+                  className="w-full rounded-xl border border-[#DCE3EF] bg-white px-3 py-2 text-xs text-[#182230] placeholder-[#8A94A6] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#365CF5]"
                 />
               </div>
 
@@ -808,27 +810,27 @@ export default function DocumentsPage() {
                   type="checkbox"
                   checked={formFavorite}
                   onChange={(e) => setFormFavorite(e.target.checked)}
-                  className="h-4 w-4 rounded border-stone-300 text-teal-800 focus:ring-teal-700"
+                  className="h-4 w-4 rounded border-[#DCE3EF] text-[#365CF5] focus:ring-[#365CF5]"
                 />
-                <label htmlFor="doc-input-favorite" className="text-xs text-stone-700 font-medium">
+                <label htmlFor="doc-input-favorite" className="text-xs text-[#344054] font-medium">
                   Mark as favorite
                 </label>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-200">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#E6EAF2]">
                 <button
                   type="button"
                   onClick={handleCloseForm}
                   disabled={isSubmittingForm}
-                  className="rounded-xl border border-stone-300 bg-white px-4 py-2 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 disabled:opacity-50 transition-colors"
+                  className="rounded-xl border border-[#DCE3EF] bg-white px-4 py-2 text-xs font-semibold text-[#344054] shadow-2xs hover:bg-[#F4F6FB] disabled:opacity-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingForm}
-                  className="rounded-xl bg-teal-800 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                  className="rounded-xl bg-[#365CF5] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#2848D8] disabled:opacity-50 transition-colors"
                 >
                   {isSubmittingForm ? "Saving..." : editingDocument ? "Save Changes" : "Create Document"}
                 </button>
@@ -844,10 +846,10 @@ export default function DocumentsPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="doc-delete-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-2xs"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
         >
-          <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-6 shadow-xl space-y-4">
-            <h2 id="doc-delete-title" className="text-sm font-semibold text-stone-900">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl space-y-4">
+            <h2 id="doc-delete-title" className="text-sm font-semibold text-slate-900">
               Delete Document
             </h2>
 
@@ -857,18 +859,18 @@ export default function DocumentsPage() {
               </div>
             )}
 
-            <p className="text-xs text-stone-600 leading-relaxed">
+            <p className="text-xs text-slate-600 leading-relaxed">
               Are you sure you want to delete{" "}
-              <strong className="text-stone-900 font-semibold">{deletingDocument.title}</strong>?
+              <strong className="text-slate-900 font-semibold">{deletingDocument.title}</strong>?
               This will remove the document from your library.
             </p>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-200">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
               <button
                 type="button"
                 onClick={handleCloseDelete}
                 disabled={isSubmittingDelete}
-                className="rounded-xl border border-stone-300 bg-white px-4 py-2 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 disabled:opacity-50 transition-colors"
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:opacity-50 transition-colors"
               >
                 Cancel
               </button>
@@ -876,7 +878,7 @@ export default function DocumentsPage() {
                 type="button"
                 onClick={handleConfirmDelete}
                 disabled={isSubmittingDelete}
-                className="rounded-xl bg-rose-700 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-rose-800 disabled:opacity-50 transition-colors"
+                className="rounded-xl bg-rose-600 hover:bg-rose-700 px-4 py-2 text-xs font-semibold text-white shadow-xs disabled:opacity-50 transition-colors"
               >
                 {isSubmittingDelete ? "Deleting..." : "Delete Document"}
               </button>

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAuth as defaultRequireAuth } from '../auth/requireAuth.js';
 import { requireCsrf, setNoCacheHeaders } from '../auth/csrf.js';
 import * as defaultDocumentRepo from '../documents/documentRepository.js';
+import { resolveWorkspaceId } from '../workspaces/workspaceResolution.js';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -19,6 +20,7 @@ function isValidUuid(id) {
  */
 export function createDocumentsRouter({
   documentRepository = defaultDocumentRepo,
+  resolveWorkspace = resolveWorkspaceId,
   requireAuthMiddleware = defaultRequireAuth,
 } = {}) {
   const router = Router();
@@ -80,9 +82,11 @@ export function createDocumentsRouter({
         });
       }
       const parsedOffset = parseInt(offset, 10);
+      const workspaceId = await resolveWorkspace(req);
 
       const result = await documentRepository.findDocumentsByUserId({
         userId: req.user.id,
+        workspaceId,
         category,
         topic,
         favorite,
@@ -125,6 +129,7 @@ export function createDocumentsRouter({
         'category',
         'topic',
         'favorite',
+        'workspaceId',
       ]);
 
       for (const key of Object.keys(req.body)) {
@@ -137,6 +142,7 @@ export function createDocumentsRouter({
       }
 
       const { title, url, description, category, topic, favorite } = req.body;
+      const workspaceId = await resolveWorkspace(req);
 
       if (title === undefined) {
         return res.status(400).json({
@@ -155,6 +161,7 @@ export function createDocumentsRouter({
       try {
         const created = await documentRepository.createDocument({
           userId: req.user.id,
+          workspaceId,
           title,
           url,
           description,
@@ -190,9 +197,11 @@ export function createDocumentsRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const document = await documentRepository.findDocumentByIdAndUserId({
         id,
         userId: req.user.id,
+        workspaceId,
       });
 
       if (!document) {
@@ -237,6 +246,7 @@ export function createDocumentsRouter({
         'category',
         'topic',
         'favorite',
+        'workspaceId',
       ]);
 
       for (const key of Object.keys(req.body)) {
@@ -249,11 +259,13 @@ export function createDocumentsRouter({
       }
 
       const { title, url, description, category, topic, favorite } = req.body;
+      const workspaceId = await resolveWorkspace(req);
 
       try {
         const updated = await documentRepository.updateDocument({
           id,
           userId: req.user.id,
+          workspaceId,
           title,
           url,
           description,
@@ -296,9 +308,11 @@ export function createDocumentsRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const updated = await documentRepository.setDocumentFavorite({
         id,
         userId: req.user.id,
+        workspaceId,
         favorite: true,
       });
 
@@ -330,9 +344,11 @@ export function createDocumentsRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const updated = await documentRepository.setDocumentFavorite({
         id,
         userId: req.user.id,
+        workspaceId,
         favorite: false,
       });
 
@@ -364,9 +380,11 @@ export function createDocumentsRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const deleted = await documentRepository.softDeleteDocument({
         id,
         userId: req.user.id,
+        workspaceId,
       });
 
       if (!deleted) {

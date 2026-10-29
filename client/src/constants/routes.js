@@ -14,6 +14,8 @@ export const APPROVED_ROUTES = [
   "/workspaces",
   "/revision",
   "/journal",
+  "/search",
+  "/settings",
 ];
 
 const NOTE_DETAIL_ROUTE_REGEX = /^\/notes\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -142,6 +144,12 @@ export function getRouteMetadata(pathname) {
   }
   if (pathname === "/revision") {
     return { title: "Revision", description: "Review and reinforce knowledge using spaced repetition cycles." };
+  }
+  if (pathname === "/settings") {
+    return { title: "Profile & Settings", description: "Manage your account, password, and active sessions." };
+  }
+  if (pathname === "/search") {
+    return { title: "Search", description: "Global search across active workspace." };
   }
   for (const group of NAV_GROUPS) {
     const item = group.items.find((i) => i.to === pathname);

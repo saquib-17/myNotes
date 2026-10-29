@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAuth as defaultRequireAuth } from '../auth/requireAuth.js';
 import { requireCsrf, setNoCacheHeaders } from '../auth/csrf.js';
 import * as defaultTaskRepo from '../tasks/taskRepository.js';
+import { resolveWorkspaceId } from '../workspaces/workspaceResolution.js';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -19,6 +20,7 @@ function isValidUuid(id) {
  */
 export function createTasksRouter({
   taskRepository = defaultTaskRepo,
+  resolveWorkspace = resolveWorkspaceId,
   requireAuthMiddleware = defaultRequireAuth,
 } = {}) {
   const router = Router();
@@ -90,9 +92,11 @@ export function createTasksRouter({
         });
       }
       const parsedOffset = parseInt(offset, 10);
+      const workspaceId = await resolveWorkspace(req);
 
       const result = await taskRepository.findTasksByUserId({
         userId: req.user.id,
+        workspaceId,
         status,
         priority,
         q,
@@ -126,7 +130,7 @@ export function createTasksRouter({
         });
       }
 
-      const allowedKeys = new Set(['title', 'details', 'status', 'priority', 'dueDate']);
+      const allowedKeys = new Set(['title', 'details', 'status', 'priority', 'dueDate', 'workspaceId']);
       for (const key of Object.keys(req.body)) {
         if (!allowedKeys.has(key)) {
           return res.status(400).json({
@@ -137,6 +141,7 @@ export function createTasksRouter({
       }
 
       const { title, details, status, priority, dueDate } = req.body;
+      const workspaceId = await resolveWorkspace(req);
 
       if (title === undefined) {
         return res.status(400).json({
@@ -174,6 +179,7 @@ export function createTasksRouter({
 
       const created = await taskRepository.createTask({
         userId: req.user.id,
+        workspaceId,
         title: normalizedTitle,
         details: normalizedDetails,
         status: normalizedStatus,
@@ -202,9 +208,11 @@ export function createTasksRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const task = await taskRepository.findTaskByIdAndUserId({
         id,
         userId: req.user.id,
+        workspaceId,
       });
 
       if (!task) {
@@ -242,7 +250,7 @@ export function createTasksRouter({
         });
       }
 
-      const allowedKeys = new Set(['title', 'details', 'status', 'priority', 'dueDate']);
+      const allowedKeys = new Set(['title', 'details', 'status', 'priority', 'dueDate', 'workspaceId']);
       for (const key of Object.keys(req.body)) {
         if (!allowedKeys.has(key)) {
           return res.status(400).json({
@@ -253,6 +261,7 @@ export function createTasksRouter({
       }
 
       const { title, details, status, priority, dueDate } = req.body;
+      const workspaceId = await resolveWorkspace(req);
 
       try {
         if (title !== undefined) {
@@ -280,6 +289,7 @@ export function createTasksRouter({
       const result = await taskRepository.updateTask({
         id,
         userId: req.user.id,
+        workspaceId,
         title,
         details,
         status,
@@ -315,9 +325,11 @@ export function createTasksRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const result = await taskRepository.setTaskStatus({
         id,
         userId: req.user.id,
+        workspaceId,
         status: 'completed',
       });
 
@@ -349,9 +361,11 @@ export function createTasksRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const result = await taskRepository.setTaskStatus({
         id,
         userId: req.user.id,
+        workspaceId,
         status: 'pending',
       });
 
@@ -383,9 +397,11 @@ export function createTasksRouter({
         });
       }
 
+      const workspaceId = await resolveWorkspace(req);
       const result = await taskRepository.softDeleteTask({
         id,
         userId: req.user.id,
+        workspaceId,
       });
 
       if (result.notFound) {

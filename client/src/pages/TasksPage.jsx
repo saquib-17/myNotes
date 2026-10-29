@@ -38,6 +38,7 @@ function formatDisplayDate(dateStr) {
  * TasksPage - Personal Task Inbox with full lifecycle management.
  * Authenticated, CSRF-protected, client-side date comparison for overdue status,
  * optimistic toggling with rollback, and stale response guards.
+ * Styled with Midnight Indigo tokens and dark mode support.
  */
 export default function TasksPage() {
   const { getCsrfToken } = useAuth();
@@ -209,7 +210,6 @@ export default function TasksPage() {
       setQuickTitle("");
       setQuickPriority("none");
       setQuickDueDate("");
-      // Reload current page to maintain correct server ordering
       await loadTasks();
     } catch (err) {
       setQuickAddError(err?.message || "Failed to create task.");
@@ -225,7 +225,6 @@ export default function TasksPage() {
     const previousTasks = [...tasks];
     setOperationError(null);
 
-    // Optimistically update list
     setTasks((prev) =>
       prev.map((t) =>
         t.id === task.id
@@ -246,12 +245,10 @@ export default function TasksPage() {
         await reopenTask(task.id, { csrfToken });
       }
 
-      // If viewing filtered list (e.g. status='pending' and we completed it), reload to update view accurately
       if (statusFilter !== "all") {
         await loadTasks();
       }
     } catch (err) {
-      // Rollback optimistic update
       setTasks(previousTasks);
       setOperationError(
         `Failed to update task status: ${err?.message || "Server error"}`
@@ -315,12 +312,10 @@ export default function TasksPage() {
         csrfToken,
       });
 
-      // Update in state
       setTasks((prev) =>
         prev.map((t) => (t.id === editingTask.id ? { ...t, ...updated } : t))
       );
       handleCloseEdit();
-      // Reload if filtered by status and status changed
       if (statusFilter !== "all" && editStatus !== editingTask.status) {
         await loadTasks();
       }
@@ -360,7 +355,6 @@ export default function TasksPage() {
       setTotal((prev) => Math.max(0, prev - 1));
       handleCloseDelete();
 
-      // If page is now empty and offset > 0, trigger loadTasks
       if (tasks.length <= 1 && offset > 0) {
         setOffset((prev) => Math.max(0, prev - PAGE_SIZE));
       }
@@ -384,36 +378,36 @@ export default function TasksPage() {
   const todayStr = getTodayString();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5">
       {/* Status counters and summary */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-200 pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/90 pb-2.5">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-800 border border-teal-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-teal-600" aria-hidden="true" />
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EEF3FF] px-2.5 py-0.5 text-xs font-semibold text-[#2948D8] border border-[#C7D7FE]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#365CF5]" aria-hidden="true" />
             Total: {total}
           </span>
           {statusFilter === "all" && (
             <>
-              <span className="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-700">
+              <span className="inline-flex items-center rounded-full bg-[#F4F6FB] border border-[#E6EAF2] px-2 py-0.5 text-xs font-medium text-[#374151]">
                 Pending: {pendingCount}
               </span>
-              <span className="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-700">
+              <span className="inline-flex items-center rounded-full bg-[#F4F6FB] border border-[#E6EAF2] px-2 py-0.5 text-xs font-medium text-[#374151]">
                 Completed: {completedCount}
               </span>
             </>
           )}
         </div>
-        <p className="text-xs text-stone-500">Manage daily tasks and to-dos here.</p>
+        <p className="text-xs text-[#667085]">Manage daily tasks and to-dos here.</p>
       </div>
 
       {/* Global Operation Error Alert */}
       {operationError && (
         <div
           role="alert"
-          className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 flex items-start justify-between"
+          className="rounded-2xl border border-rose-200 bg-rose-50 p-3.5 text-xs sm:text-sm text-rose-800 flex items-start justify-between"
         >
           <div className="flex items-center gap-2">
-            <svg className="h-5 w-5 text-rose-600 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+            <svg className="h-4 w-4 text-rose-600 shrink-0" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
             </svg>
             <span>{operationError}</span>
@@ -421,7 +415,7 @@ export default function TasksPage() {
           <button
             type="button"
             onClick={() => setOperationError(null)}
-            className="text-rose-600 hover:text-rose-900 font-medium text-xs ml-4"
+            className="text-rose-600 hover:text-rose-800 font-medium text-xs ml-4"
           >
             Dismiss
           </button>
@@ -429,9 +423,9 @@ export default function TasksPage() {
       )}
 
       {/* Quick-Add Task Box */}
-      <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 shadow-xs">
-        <form onSubmit={handleQuickAdd} className="space-y-3">
-          <div className="flex flex-col sm:flex-row gap-3">
+      <div className="rounded-2xl border border-[#E6EAF2] bg-white p-3.5 sm:p-4 shadow-xs">
+        <form onSubmit={handleQuickAdd} className="space-y-2.5">
+          <div className="flex flex-col sm:flex-row gap-2.5">
             <div className="relative flex-1">
               <input
                 type="text"
@@ -443,7 +437,7 @@ export default function TasksPage() {
                 maxLength={TASK_LIMITS.MAX_TITLE_LENGTH}
                 placeholder="What needs to be done? (e.g. Implement binary search)"
                 aria-label="New task title"
-                className="w-full rounded-xl border border-stone-300 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+                className="w-full rounded-xl border border-[#DCE3EF] bg-white px-3.5 py-2 text-xs sm:text-sm text-[#111827] placeholder-[#8A94A6] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40"
                 disabled={isSubmittingQuick}
               />
             </div>
@@ -454,7 +448,7 @@ export default function TasksPage() {
                 value={quickPriority}
                 onChange={(e) => setQuickPriority(e.target.value)}
                 aria-label="New task priority"
-                className="rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-xs font-medium text-stone-700 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+                className="rounded-xl border border-[#DCE3EF] bg-white px-2.5 py-2 text-xs font-medium text-[#374151] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40"
                 disabled={isSubmittingQuick}
               >
                 <option value="none">Priority: None</option>
@@ -469,7 +463,7 @@ export default function TasksPage() {
                 value={quickDueDate}
                 onChange={(e) => setQuickDueDate(e.target.value)}
                 aria-label="New task due date"
-                className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs text-stone-700 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+                className="rounded-xl border border-[#DCE3EF] bg-white px-2.5 py-2 text-xs text-[#374151] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40"
                 disabled={isSubmittingQuick}
               />
 
@@ -477,7 +471,7 @@ export default function TasksPage() {
               <button
                 type="submit"
                 disabled={isSubmittingQuick || !quickTitle.trim()}
-                className="inline-flex items-center justify-center rounded-xl bg-teal-800 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-teal-700 focus-visible:outline-2 focus-visible:outline-teal-800 disabled:opacity-50 transition-colors shrink-0"
+                className="inline-flex items-center justify-center rounded-xl bg-[#365CF5] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#2848D8] focus-visible:outline-2 focus-visible:outline-[#A5B4FC] disabled:opacity-50 transition-colors shrink-0 cursor-pointer"
               >
                 {isSubmittingQuick ? "Adding..." : "Add Task"}
               </button>
@@ -493,16 +487,16 @@ export default function TasksPage() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Status Filter Tabs */}
-        <div className="flex items-center p-1 rounded-xl bg-stone-100 border border-stone-200 self-start">
+        <div className="flex items-center p-0.5 rounded-lg bg-slate-100 border border-slate-200/80 self-start">
           <button
             type="button"
             onClick={() => handleStatusFilterChange("all")}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+            className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
               statusFilter === "all"
-                ? "bg-white text-stone-900 shadow-xs"
-                : "text-stone-600 hover:text-stone-900"
+                ? "bg-white text-slate-900 shadow-2xs"
+                : "text-slate-600 hover:text-slate-900"
             }`}
           >
             All
@@ -510,10 +504,10 @@ export default function TasksPage() {
           <button
             type="button"
             onClick={() => handleStatusFilterChange("pending")}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+            className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
               statusFilter === "pending"
-                ? "bg-white text-stone-900 shadow-xs"
-                : "text-stone-600 hover:text-stone-900"
+                ? "bg-white text-slate-900 shadow-2xs"
+                : "text-slate-600 hover:text-slate-900"
             }`}
           >
             Pending
@@ -521,10 +515,10 @@ export default function TasksPage() {
           <button
             type="button"
             onClick={() => handleStatusFilterChange("completed")}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+            className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
               statusFilter === "completed"
-                ? "bg-white text-stone-900 shadow-xs"
-                : "text-stone-600 hover:text-stone-900"
+                ? "bg-white text-slate-900 shadow-2xs"
+                : "text-slate-600 hover:text-slate-900"
             }`}
           >
             Completed
@@ -537,7 +531,7 @@ export default function TasksPage() {
             value={priorityFilter}
             onChange={(e) => handlePriorityFilterChange(e.target.value)}
             aria-label="Filter tasks by priority"
-            className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-medium text-stone-700 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+            className="rounded-xl border border-[#DCE3EF] bg-white px-2.5 py-1.5 text-xs font-medium text-[#374151] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40"
           >
             <option value="all">All Priorities</option>
             <option value="high">High Priority</option>
@@ -553,10 +547,10 @@ export default function TasksPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search tasks..."
               aria-label="Search tasks"
-              className="w-full sm:w-56 rounded-xl border border-stone-300 pl-8 pr-3 py-2 text-xs text-stone-900 placeholder-stone-400 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+              className="w-full sm:w-52 rounded-xl border border-[#DCE3EF] bg-white pl-8 pr-3 py-1.5 text-xs text-[#111827] placeholder-[#8A94A6] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40"
             />
             <svg
-              className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-stone-400"
+              className="absolute left-2.5 top-2 h-3.5 w-3.5 text-[#8A94A6]"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -568,7 +562,7 @@ export default function TasksPage() {
                 type="button"
                 onClick={() => setSearchQuery("")}
                 aria-label="Clear search"
-                className="absolute right-2 top-2 text-stone-400 hover:text-stone-600"
+                className="absolute right-2 top-1.5 text-[#8A94A6] hover:text-[#111827]"
               >
                 <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
@@ -581,8 +575,8 @@ export default function TasksPage() {
 
       {/* Main Content Area */}
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-12 text-stone-400">
-          <svg className="h-8 w-8 animate-spin text-teal-700 mb-3" fill="none" viewBox="0 0 24 24">
+        <div className="flex flex-col items-center justify-center py-12 text-[#8A94A6]">
+          <svg className="h-8 w-8 animate-spin text-[#365CF5] mb-3" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
           </svg>
@@ -594,13 +588,12 @@ export default function TasksPage() {
           <button
             type="button"
             onClick={() => loadTasks()}
-            className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700"
+            className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 transition-colors"
           >
             Retry
           </button>
         </div>
       ) : tasks.length === 0 ? (
-        // Empty States
         debouncedQuery ? (
           <EmptyState
             title={`No tasks matching ‘${debouncedQuery}’`}
@@ -643,7 +636,6 @@ export default function TasksPage() {
           />
         )
       ) : (
-        // Task List
         <div className="space-y-2.5">
           {tasks.map((task) => {
             const isCompleted = task.status === "completed";
@@ -659,10 +651,10 @@ export default function TasksPage() {
             return (
               <div
                 key={task.id}
-                className={`group flex items-start gap-3 rounded-2xl border p-4 transition-colors ${
+                className={`group flex items-start gap-3 rounded-xl border p-3 sm:p-3.5 transition-colors ${
                   isCompleted
-                    ? "border-stone-200 bg-stone-50/70 text-stone-500"
-                    : "border-stone-200 bg-white text-stone-900 hover:border-stone-300 shadow-2xs"
+                    ? "border-slate-200/90 bg-slate-50/70 text-slate-500"
+                    : "border-slate-200/90 bg-white text-slate-900 hover:border-slate-300 shadow-2xs"
                 }`}
               >
                 {/* Complete/Reopen Checkbox Button */}
@@ -676,8 +668,8 @@ export default function TasksPage() {
                   }
                   className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
                     isCompleted
-                      ? "border-teal-600 bg-teal-600 text-white"
-                      : "border-stone-300 bg-white hover:border-teal-600"
+                      ? "border-[#365CF5] bg-[#365CF5] text-white"
+                      : "border-[#DCE3EF] bg-white hover:border-[#365CF5]"
                   }`}
                 >
                   {isCompleted && (
@@ -692,7 +684,7 @@ export default function TasksPage() {
                   <div className="flex items-start justify-between gap-2">
                     <p
                       className={`text-sm font-medium leading-snug break-words ${
-                        isCompleted ? "line-through text-stone-400" : "text-stone-900"
+                        isCompleted ? "line-through text-slate-400" : "text-slate-900"
                       }`}
                     >
                       {task.title}
@@ -704,7 +696,7 @@ export default function TasksPage() {
                         type="button"
                         onClick={() => handleOpenEdit(task)}
                         aria-label={`Edit task "${task.title}"`}
-                        className="rounded-lg p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition-colors"
+                        className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
                       >
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
@@ -714,7 +706,7 @@ export default function TasksPage() {
                         type="button"
                         onClick={() => handleOpenDelete(task)}
                         aria-label={`Delete task "${task.title}"`}
-                        className="rounded-lg p-1 text-stone-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                        className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
                       >
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
@@ -727,7 +719,7 @@ export default function TasksPage() {
                   {task.details && (
                     <p
                       className={`mt-1 text-xs whitespace-pre-wrap break-words leading-relaxed ${
-                        isCompleted ? "text-stone-400" : "text-stone-600"
+                        isCompleted ? "text-slate-400" : "text-slate-600"
                       }`}
                     >
                       {task.details}
@@ -750,8 +742,8 @@ export default function TasksPage() {
                       </span>
                     )}
                     {task.priority === "low" && (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-2xs font-semibold text-blue-700 border border-blue-200">
-                        <span className="h-1.5 w-1.5 rounded-full bg-blue-600" aria-hidden="true" />
+                      <span className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-2 py-0.5 text-2xs font-semibold text-sky-700 border border-sky-200">
+                        <span className="h-1.5 w-1.5 rounded-full bg-sky-600" aria-hidden="true" />
                         Low
                       </span>
                     )}
@@ -764,7 +756,7 @@ export default function TasksPage() {
                             ? "bg-rose-50 text-rose-700 border-rose-300 font-semibold"
                             : isDueToday
                             ? "bg-amber-50 text-amber-800 border-amber-300 font-semibold"
-                            : "bg-stone-100 text-stone-600 border-stone-200"
+                            : "bg-slate-100 text-slate-600 border-slate-200"
                         }`}
                       >
                         <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -785,20 +777,20 @@ export default function TasksPage() {
 
       {/* Pagination Controls */}
       {total > PAGE_SIZE && (
-        <div className="flex items-center justify-between border-t border-stone-200 pt-4 text-xs text-stone-500">
+        <div className="flex items-center justify-between border-t border-slate-200 pt-4 text-xs text-slate-500">
           <div>
-            Showing <span className="font-medium text-stone-900">{offset + 1}</span> to{" "}
-            <span className="font-medium text-stone-900">
+            Showing <span className="font-medium text-slate-900">{offset + 1}</span> to{" "}
+            <span className="font-medium text-slate-900">
               {Math.min(offset + PAGE_SIZE, total)}
             </span>{" "}
-            of <span className="font-medium text-stone-900">{total}</span> tasks
+            of <span className="font-medium text-slate-900">{total}</span> tasks
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               disabled={offset === 0 || isLoading}
               onClick={() => setOffset((prev) => Math.max(0, prev - PAGE_SIZE))}
-              className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 font-medium text-stone-700 shadow-2xs hover:bg-stone-50 disabled:opacity-40 transition-colors"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 shadow-2xs hover:bg-slate-50 disabled:opacity-40 transition-colors"
             >
               Previous
             </button>
@@ -806,7 +798,7 @@ export default function TasksPage() {
               type="button"
               disabled={!hasMore || offset + PAGE_SIZE >= total || isLoading}
               onClick={() => setOffset((prev) => prev + PAGE_SIZE)}
-              className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 font-medium text-stone-700 shadow-2xs hover:bg-stone-50 disabled:opacity-40 transition-colors"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 shadow-2xs hover:bg-slate-50 disabled:opacity-40 transition-colors"
             >
               Next
             </button>
@@ -820,11 +812,11 @@ export default function TasksPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="edit-task-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs"
         >
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl border border-stone-200">
-            <div className="flex items-center justify-between border-b border-stone-200 pb-3">
-              <h2 id="edit-task-modal-title" className="text-lg font-bold text-stone-900">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl border border-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <h2 id="edit-task-modal-title" className="text-lg font-bold text-slate-900">
                 Edit Task
               </h2>
               <button
@@ -832,7 +824,7 @@ export default function TasksPage() {
                 onClick={handleCloseEdit}
                 disabled={isSubmittingEdit}
                 aria-label="Close edit modal"
-                className="rounded-lg p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-600"
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
               >
                 <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -842,7 +834,7 @@ export default function TasksPage() {
 
             <form onSubmit={handleSubmitEdit} className="mt-4 space-y-4">
               <div>
-                <label htmlFor="edit-task-title" className="block text-xs font-semibold text-stone-700 mb-1">
+                <label htmlFor="edit-task-title" className="block text-xs font-semibold text-slate-700 mb-1">
                   Title <span className="text-rose-600">*</span>
                 </label>
                 <input
@@ -851,17 +843,17 @@ export default function TasksPage() {
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   maxLength={TASK_LIMITS.MAX_TITLE_LENGTH}
-                  className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+                  className="w-full rounded-xl border border-[#DCE3EF] bg-white px-3 py-2 text-sm text-[#111827] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40"
                   disabled={isSubmittingEdit}
                   required
                 />
-                <p className="mt-1 text-right text-2xs text-stone-400">
+                <p className="mt-1 text-right text-2xs text-[#8A94A6]">
                   {editTitle.length}/{TASK_LIMITS.MAX_TITLE_LENGTH}
                 </p>
               </div>
 
               <div>
-                <label htmlFor="edit-task-details" className="block text-xs font-semibold text-stone-700 mb-1">
+                <label htmlFor="edit-task-details" className="block text-xs font-semibold text-[#111827] mb-1">
                   Details (Optional)
                 </label>
                 <textarea
@@ -870,24 +862,24 @@ export default function TasksPage() {
                   onChange={(e) => setEditDetails(e.target.value)}
                   maxLength={TASK_LIMITS.MAX_DETAILS_LENGTH}
                   rows={3}
-                  className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+                  className="w-full rounded-xl border border-[#DCE3EF] bg-white px-3 py-2 text-sm text-[#111827] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40"
                   disabled={isSubmittingEdit}
                 />
-                <p className="mt-1 text-right text-2xs text-stone-400">
+                <p className="mt-1 text-right text-2xs text-[#8A94A6]">
                   {editDetails.length}/{TASK_LIMITS.MAX_DETAILS_LENGTH}
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label htmlFor="edit-task-priority" className="block text-xs font-semibold text-stone-700 mb-1">
+                  <label htmlFor="edit-task-priority" className="block text-xs font-semibold text-[#111827] mb-1">
                     Priority
                   </label>
                   <select
                     id="edit-task-priority"
                     value={editPriority}
                     onChange={(e) => setEditPriority(e.target.value)}
-                    className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-medium text-stone-700 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+                    className="w-full rounded-xl border border-[#DCE3EF] bg-white px-3 py-2 text-xs font-medium text-[#374151] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40"
                     disabled={isSubmittingEdit}
                   >
                     <option value="none">None</option>
@@ -898,14 +890,14 @@ export default function TasksPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="edit-task-status" className="block text-xs font-semibold text-stone-700 mb-1">
+                  <label htmlFor="edit-task-status" className="block text-xs font-semibold text-[#111827] mb-1">
                     Status
                   </label>
                   <select
                     id="edit-task-status"
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value)}
-                    className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-medium text-stone-700 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+                    className="w-full rounded-xl border border-[#DCE3EF] bg-white px-3 py-2 text-xs font-medium text-[#374151] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40"
                     disabled={isSubmittingEdit}
                   >
                     <option value="pending">Pending</option>
@@ -914,7 +906,7 @@ export default function TasksPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="edit-task-due-date" className="block text-xs font-semibold text-stone-700 mb-1">
+                  <label htmlFor="edit-task-due-date" className="block text-xs font-semibold text-[#111827] mb-1">
                     Due Date
                   </label>
                   <div className="flex items-center gap-1">
@@ -923,7 +915,7 @@ export default function TasksPage() {
                       type="date"
                       value={editDueDate}
                       onChange={(e) => setEditDueDate(e.target.value)}
-                      className="w-full rounded-xl border border-stone-300 bg-white px-2 py-1.5 text-xs text-stone-700 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+                      className="w-full rounded-xl border border-[#DCE3EF] bg-white px-2 py-1.5 text-xs text-[#374151] focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40"
                       disabled={isSubmittingEdit}
                     />
                     {editDueDate && (
@@ -931,7 +923,8 @@ export default function TasksPage() {
                         type="button"
                         onClick={() => setEditDueDate("")}
                         title="Clear due date"
-                        className="p-1 text-stone-400 hover:text-stone-600 text-xs"
+                        aria-label="Clear due date"
+                        className="p-1 text-[#8A94A6] hover:text-[#111827] text-xs"
                       >
                         ✕
                       </button>
@@ -941,24 +934,24 @@ export default function TasksPage() {
               </div>
 
               {editError && (
-                <div role="alert" className="rounded-lg bg-rose-50 p-3 text-xs text-rose-700">
+                <div role="alert" className="rounded-lg bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700">
                   {editError}
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-200">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#E6EAF2]">
                 <button
                   type="button"
                   onClick={handleCloseEdit}
                   disabled={isSubmittingEdit}
-                  className="rounded-xl border border-stone-300 px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+                  className="rounded-xl border border-[#DCE3EF] px-4 py-2 text-xs font-semibold text-[#374151] hover:bg-[#F4F6FB]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingEdit}
-                  className="rounded-xl bg-teal-800 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+                  className="rounded-xl bg-[#365CF5] px-4 py-2 text-xs font-semibold text-white hover:bg-[#2848D8] disabled:opacity-50 transition-colors cursor-pointer"
                 >
                   {isSubmittingEdit ? "Saving..." : "Save Changes"}
                 </button>
@@ -974,21 +967,21 @@ export default function TasksPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-task-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs"
         >
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-stone-200">
-            <h2 id="delete-task-modal-title" className="text-lg font-bold text-stone-900">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-200">
+            <h2 id="delete-task-modal-title" className="text-lg font-bold text-slate-900">
               Delete Task
             </h2>
-            <p className="mt-2 text-sm text-stone-600">
-              Are you sure you want to delete <span className="font-semibold text-stone-900">“{deletingTask.title}”</span>?
+            <p className="mt-2 text-sm text-slate-600">
+              Are you sure you want to delete <span className="font-semibold text-slate-900">“{deletingTask.title}”</span>?
             </p>
-            <div className="mt-3 rounded-xl bg-stone-50 border border-stone-200 p-3 text-xs text-stone-600">
+            <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs text-slate-600">
               This task will be moved to a deleted state and excluded from your active tasks list.
             </div>
 
             {deleteError && (
-              <div role="alert" className="mt-3 rounded-lg bg-rose-50 p-3 text-xs text-rose-700">
+              <div role="alert" className="mt-3 rounded-lg bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700">
                 {deleteError}
               </div>
             )}
@@ -998,7 +991,7 @@ export default function TasksPage() {
                 type="button"
                 onClick={handleCloseDelete}
                 disabled={isSubmittingDelete}
-                className="rounded-xl border border-stone-300 px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+                className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
               >
                 Cancel
               </button>
@@ -1006,7 +999,7 @@ export default function TasksPage() {
                 type="button"
                 onClick={handleSubmitDelete}
                 disabled={isSubmittingDelete}
-                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50 transition-colors"
               >
                 {isSubmittingDelete ? "Deleting..." : "Delete Task"}
               </button>

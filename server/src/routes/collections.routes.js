@@ -4,6 +4,7 @@ import { requireCsrf, setNoCacheHeaders } from '../auth/csrf.js';
 import { generatePreview } from '../notes/contentValidator.js';
 import * as defaultCollectionRepo from '../collections/collectionRepository.js';
 import * as defaultNoteRepo from '../notes/noteRepository.js';
+import { resolveWorkspaceId } from '../workspaces/workspaceResolution.js';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -23,6 +24,7 @@ function isValidUuid(id) {
 export function createCollectionsRouter({
   collectionRepository = defaultCollectionRepo,
   noteRepository = defaultNoteRepo,
+  resolveWorkspace = resolveWorkspaceId,
   requireAuthMiddleware = defaultRequireAuth,
 } = {}) {
   const router = Router();
@@ -280,10 +282,12 @@ export function createCollectionsRouter({
         });
       }
       const parsedOffset = parseInt(offset, 10);
+      const workspaceId = await resolveWorkspace(req);
 
       const result = await noteRepository.findNotesByUserId({
         userId: req.user.id,
         collectionId: id,
+        workspaceId,
         q,
         limit: parsedLimit,
         offset: parsedOffset,

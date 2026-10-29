@@ -176,6 +176,7 @@ function mapDocumentRow(row) {
   if (!row) return null;
   return {
     id: row.id,
+    workspaceId: row.workspace_id || null,
     title: row.title,
     url: row.url,
     description: row.description,
@@ -192,6 +193,7 @@ function mapDocumentRow(row) {
  */
 export async function createDocument({
   userId,
+  workspaceId = null,
   title,
   url,
   description = null,
@@ -210,18 +212,20 @@ export async function createDocument({
   const query = `
     INSERT INTO documents (
       user_id,
+      workspace_id,
       title,
       url,
       description,
       category,
       topic,
       favorite
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     RETURNING *;
   `;
 
   const values = [
     userId,
+    workspaceId || null,
     normalizedTitle,
     normalizedUrl,
     normalizedDescription,
@@ -239,6 +243,7 @@ export async function createDocument({
  */
 export async function findDocumentsByUserId({
   userId,
+  workspaceId = null,
   category,
   topic,
   favorite,
@@ -249,6 +254,11 @@ export async function findDocumentsByUserId({
 }) {
   const conditions = ['user_id = $1', 'deleted_at IS NULL'];
   const values = [userId];
+
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
 
   if (category && DOCUMENT_LIMITS.ALLOWED_CATEGORIES.includes(category.toLowerCase())) {
     values.push(category.toLowerCase());
@@ -325,10 +335,18 @@ export async function findDocumentsByUserId({
 /**
  * Retrieves a single active document by ID.
  */
-export async function findDocumentByIdAndUserId({ id, userId, pool = getPool() }) {
+export async function findDocumentByIdAndUserId({ id, userId, workspaceId = null, pool = getPool() }) {
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL'];
+  const values = [id, userId];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
     SELECT
       id,
+      workspace_id,
       title,
       url,
       description,
@@ -338,9 +356,9 @@ export async function findDocumentByIdAndUserId({ id, userId, pool = getPool() }
       created_at,
       updated_at
     FROM documents
-    WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL;
+    WHERE ${conditions.join(' AND ')};
   `;
-  const result = await pool.query(query, [id, userId]);
+  const result = await pool.query(query, values);
   if (result.rows.length === 0) {
     return null;
   }
@@ -353,6 +371,7 @@ export async function findDocumentByIdAndUserId({ id, userId, pool = getPool() }
 export async function updateDocument({
   id,
   userId,
+  workspaceId = null,
   title,
   url,
   description,
@@ -401,15 +420,21 @@ export async function updateDocument({
   }
 
   if (setClauses.length === 0) {
-    return findDocumentByIdAndUserId({ id, userId, pool });
+    return findDocumentByIdAndUserId({ id, userId, workspaceId, pool });
   }
 
   setClauses.push('updated_at = now()');
 
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL'];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
     UPDATE documents
     SET ${setClauses.join(', ')}
-    WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+    WHERE ${conditions.join(' AND ')}
     RETURNING *;
   `;
 
@@ -423,15 +448,22 @@ export async function updateDocument({
 /**
  * Sets document favorite status.
  */
-export async function setDocumentFavorite({ id, userId, favorite, pool = getPool() }) {
+export async function setDocumentFavorite({ id, userId, workspaceId = null, favorite, pool = getPool() }) {
   const normalizedFavorite = validateFavorite(favorite);
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL'];
+  const values = [id, userId, normalizedFavorite];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
     UPDATE documents
     SET favorite = $3, updated_at = now()
-    WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+    WHERE ${conditions.join(' AND ')}
     RETURNING *;
   `;
-  const result = await pool.query(query, [id, userId, normalizedFavorite]);
+  const result = await pool.query(query, values);
   if (result.rows.length === 0) {
     return null;
   }
@@ -441,14 +473,21 @@ export async function setDocumentFavorite({ id, userId, favorite, pool = getPool
 /**
  * Soft deletes a document.
  */
-export async function softDeleteDocument({ id, userId, pool = getPool() }) {
+export async function softDeleteDocument({ id, userId, workspaceId = null, pool = getPool() }) {
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL'];
+  const values = [id, userId];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
     UPDATE documents
     SET deleted_at = now(), updated_at = now()
-    WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+    WHERE ${conditions.join(' AND ')}
     RETURNING id;
   `;
-  const result = await pool.query(query, [id, userId]);
+  const result = await pool.query(query, values);
   return (result.rowCount ?? 0) > 0;
 }
 

@@ -20,15 +20,19 @@ export function escapeLikeWildcards(str) {
  *
  * @param {object} params
  * @param {string} params.userId
+ * @param {string} [params.workspaceId=null]
  * @param {string} params.title
  * @param {object} params.contentJson
  * @param {string} params.contentText
  * @param {boolean} [params.pinned=false]
+ * @param {string|null} [params.collectionId=null]
+ * @param {string[]} [params.tags]
  * @param {import('pg').Pool} [params.pool]
  * @returns {Promise<object>} Created note record
  */
 export async function createNote({
   userId,
+  workspaceId = null,
   title,
   contentJson,
   contentText,
@@ -41,12 +45,12 @@ export async function createNote({
   try {
     await client.query('BEGIN');
     const query = `
-      INSERT INTO notes (user_id, title, content_json, content_text, pinned, collection_id, version)
-      VALUES ($1, $2, $3, $4, COALESCE($5, false), $6, 1)
-      RETURNING id, title, content_json AS content, pinned, collection_id AS "collectionId", version, created_at AS "createdAt", updated_at AS "updatedAt";
+      INSERT INTO notes (user_id, workspace_id, title, content_json, content_text, pinned, collection_id, version)
+      VALUES ($1, $2, $3, $4, $5, COALESCE($6, false), $7, 1)
+      RETURNING id, title, content_json AS content, pinned, collection_id AS "collectionId", workspace_id AS "workspaceId", version, created_at AS "createdAt", updated_at AS "updatedAt";
     `;
 
-    const values = [userId, title, JSON.stringify(contentJson), contentText, Boolean(pinned), collectionId || null];
+    const values = [userId, workspaceId || null, title, JSON.stringify(contentJson), contentText, Boolean(pinned), collectionId || null];
     const result = await client.query(query, values);
     const createdNote = result.rows[0];
 
@@ -74,10 +78,11 @@ export async function createNote({
 }
 
 /**
- * Lists active notes for an authenticated user with optional search, collection filtering, tag filtering, and pagination.
+ * Lists active notes for an authenticated user with optional workspace, search, collection filtering, tag filtering, and pagination.
  *
  * @param {object} params
  * @param {string} params.userId
+ * @param {string} [params.workspaceId=null]
  * @param {string} [params.q] - Search query
  * @param {string} [params.collectionId] - Optional collection filter UUID
  * @param {string} [params.tagId] - Optional tag filter UUID
@@ -89,6 +94,7 @@ export async function createNote({
  */
 export async function findNotesByUserId({
   userId,
+  workspaceId = null,
   q = '',
   collectionId,
   tagId,
@@ -99,6 +105,11 @@ export async function findNotesByUserId({
 }) {
   const conditions = ['notes.user_id = $1', 'notes.deleted_at IS NULL'];
   const values = [userId];
+
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`notes.workspace_id = $${values.length}`);
+  }
 
   if (typeof collectionId === 'string' && collectionId.trim().length > 0) {
     values.push(collectionId.trim());
@@ -146,7 +157,7 @@ export async function findNotesByUserId({
   const offsetParamIdx = selectValues.length;
 
   const query = `
-    SELECT notes.id, notes.title, notes.content_text, notes.pinned, notes.collection_id AS "collectionId", notes.version, notes.created_at AS "createdAt", notes.updated_at AS "updatedAt"
+    SELECT notes.id, notes.title, notes.content_text, notes.pinned, notes.collection_id AS "collectionId", notes.workspace_id AS "workspaceId", notes.version, notes.created_at AS "createdAt", notes.updated_at AS "updatedAt"
     FROM notes
     WHERE ${conditions.join(' AND ')}
     ORDER BY notes.pinned DESC, notes.updated_at DESC, notes.id ASC
@@ -176,26 +187,36 @@ export async function findNotesByUserId({
 }
 
 /**
- * Finds a single active note by ID scoped to the authenticated owner.
+ * Finds a single active note by ID scoped to the authenticated owner and optional workspace.
  *
  * @param {object} params
  * @param {string} params.id - Note UUID
  * @param {string} params.userId - Owner UUID
+ * @param {string} [params.workspaceId] - Optional workspace UUID
  * @param {import('pg').Pool} [params.pool]
  * @returns {Promise<object|null>}
  */
 export async function findNoteByIdAndUserId({
   id,
   userId,
+  workspaceId,
   pool = getPool(),
 }) {
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL'];
+  const values = [id, userId];
+
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
-    SELECT id, title, content_json AS content, pinned, collection_id AS "collectionId", version, created_at AS "createdAt", updated_at AS "updatedAt"
+    SELECT id, title, content_json AS content, pinned, collection_id AS "collectionId", workspace_id AS "workspaceId", version, created_at AS "createdAt", updated_at AS "updatedAt"
     FROM notes
-    WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL;
+    WHERE ${conditions.join(' AND ')};
   `;
 
-  const result = await pool.query(query, [id, userId]);
+  const result = await pool.query(query, values);
   if (!result.rows[0]) return null;
 
   const noteTags = await findTagsByNoteId({ noteId: id, pool });
@@ -211,18 +232,21 @@ export async function findNoteByIdAndUserId({
  * @param {object} params
  * @param {string} params.id
  * @param {string} params.userId
+ * @param {string} [params.workspaceId]
  * @param {number} params.expectedVersion
  * @param {string} params.title
  * @param {object} params.contentJson
  * @param {string} params.contentText
  * @param {boolean} [params.pinned]
  * @param {string|null} [params.collectionId] - Optional collection UUID or null to unassign
+ * @param {string[]} [params.tags]
  * @param {import('pg').Pool} [params.pool]
  * @returns {Promise<{ updatedNote?: object, notFound?: boolean, conflict?: boolean }>}
  */
 export async function updateNote({
   id,
   userId,
+  workspaceId,
   expectedVersion,
   title,
   contentJson,
@@ -236,23 +260,31 @@ export async function updateNote({
   try {
     await client.query('BEGIN');
     const isCollectionProvided = collectionId !== undefined;
-    const updateQuery = `
-      UPDATE notes
-      SET title = $1,
-          content_json = $2,
-          content_text = $3,
-          pinned = COALESCE($4, pinned),
-          collection_id = CASE WHEN $5::boolean THEN $6::uuid ELSE collection_id END,
-          version = version + 1,
-          updated_at = now()
-      WHERE id = $7
-        AND user_id = $8
-        AND deleted_at IS NULL
-        AND version = $9
-      RETURNING id, title, content_json AS content, pinned, collection_id AS "collectionId", version, created_at AS "createdAt", updated_at AS "updatedAt";
-    `;
 
-    const values = [
+    const checkConditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL'];
+    const checkValues = [id, userId];
+    if (workspaceId) {
+      checkValues.push(workspaceId);
+      checkConditions.push(`workspace_id = $${checkValues.length}`);
+    }
+
+    const existingRes = await client.query(
+      `SELECT id, version FROM notes WHERE ${checkConditions.join(' AND ')}`,
+      checkValues
+    );
+
+    if (!existingRes.rows[0]) {
+      await client.query('ROLLBACK');
+      return { notFound: true };
+    }
+
+    if (existingRes.rows[0].version !== expectedVersion) {
+      await client.query('ROLLBACK');
+      return { conflict: true, currentVersion: existingRes.rows[0].version };
+    }
+
+    const updateConditions = ['id = $7', 'user_id = $8', 'deleted_at IS NULL', 'version = $9'];
+    const updateValues = [
       title,
       JSON.stringify(contentJson),
       contentText,
@@ -264,42 +296,51 @@ export async function updateNote({
       expectedVersion,
     ];
 
-    const result = await client.query(updateQuery, values);
-    if (result.rowCount === 1) {
-      const updatedNote = result.rows[0];
-      let noteTags;
-      if (tags !== undefined) {
-        noteTags = await syncNoteTags({
-          noteId: id,
-          userId,
-          tagNames: tags,
-          client,
-        });
-      } else {
-        noteTags = await findTagsByNoteId({ noteId: id, pool: client });
-      }
-
-      await client.query('COMMIT');
-      return { updatedNote: { ...updatedNote, tags: noteTags } };
+    if (workspaceId) {
+      updateValues.push(workspaceId);
+      updateConditions.push(`workspace_id = $${updateValues.length}`);
     }
 
-    await client.query('ROLLBACK');
-
-    // Row not updated: disambiguate notFound vs conflict without exposing other user data
-    const checkQuery = `
-      SELECT user_id, version, deleted_at
-      FROM notes
-      WHERE id = $1;
+    const updateQuery = `
+      UPDATE notes
+      SET title = $1,
+          content_json = $2,
+          content_text = $3,
+          pinned = COALESCE($4, pinned),
+          collection_id = CASE WHEN $5::boolean THEN $6::uuid ELSE collection_id END,
+          version = version + 1,
+          updated_at = now()
+      WHERE ${updateConditions.join(' AND ')}
+      RETURNING id, title, content_json AS content, pinned, collection_id AS "collectionId", workspace_id AS "workspaceId", version, created_at AS "createdAt", updated_at AS "updatedAt";
     `;
 
-    const checkResult = await pool.query(checkQuery, [id]);
-    const row = checkResult.rows[0];
+    const result = await client.query(updateQuery, updateValues);
+    const updatedNote = result.rows[0];
 
-    if (!row || row.user_id !== userId || row.deleted_at !== null) {
-      return { notFound: true };
+    if (!updatedNote) {
+      await client.query('ROLLBACK');
+      return { conflict: true, currentVersion: existingRes.rows[0].version };
     }
 
-    return { conflict: true, currentVersion: row.version };
+    let noteTags = [];
+    if (tags !== undefined) {
+      noteTags = await syncNoteTags({
+        noteId: id,
+        userId,
+        tagNames: tags,
+        client,
+      });
+    } else {
+      noteTags = await findTagsByNoteId({ noteId: id, pool: client });
+    }
+
+    await client.query('COMMIT');
+    return {
+      updatedNote: {
+        ...updatedNote,
+        tags: noteTags,
+      },
+    };
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -314,6 +355,7 @@ export async function updateNote({
  * @param {object} params
  * @param {string} params.id
  * @param {string} params.userId
+ * @param {string} [params.workspaceId]
  * @param {number} params.expectedVersion
  * @param {import('pg').Pool} [params.pool]
  * @returns {Promise<{ success?: boolean, notFound?: boolean, conflict?: boolean }>}
@@ -321,34 +363,46 @@ export async function updateNote({
 export async function trashNote({
   id,
   userId,
+  workspaceId,
   expectedVersion,
   pool = getPool(),
 }) {
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NULL', 'version = $3'];
+  const values = [id, userId, expectedVersion];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const trashQuery = `
     UPDATE notes
     SET deleted_at = now(),
         updated_at = now(),
         version = version + 1
-    WHERE id = $1
-      AND user_id = $2
-      AND deleted_at IS NULL
-      AND version = $3
+    WHERE ${conditions.join(' AND ')}
     RETURNING id;
   `;
 
-  const result = await pool.query(trashQuery, [id, userId, expectedVersion]);
+  const result = await pool.query(trashQuery, values);
   if (result.rowCount === 1) {
     return { success: true };
   }
 
   // Disambiguate notFound vs conflict
+  const checkConditions = ['id = $1'];
+  const checkValues = [id];
+  if (workspaceId) {
+    checkValues.push(workspaceId);
+    checkConditions.push(`workspace_id = $${checkValues.length}`);
+  }
+
   const checkQuery = `
     SELECT user_id, version, deleted_at
     FROM notes
-    WHERE id = $1;
+    WHERE ${checkConditions.join(' AND ')};
   `;
 
-  const checkResult = await pool.query(checkQuery, [id]);
+  const checkResult = await pool.query(checkQuery, checkValues);
   const row = checkResult.rows[0];
 
   if (!row || row.user_id !== userId || row.deleted_at !== null) {
@@ -364,6 +418,7 @@ export async function trashNote({
  * @param {object} params
  * @param {string} params.id
  * @param {string} params.userId
+ * @param {string} [params.workspaceId]
  * @param {boolean} params.pinned
  * @param {import('pg').Pool} [params.pool]
  * @returns {Promise<{ updatedNote?: object, notFound?: boolean }>}
@@ -371,20 +426,26 @@ export async function trashNote({
 export async function setNotePinned({
   id,
   userId,
+  workspaceId,
   pinned,
   pool = getPool(),
 }) {
+  const conditions = ['id = $2', 'user_id = $3', 'deleted_at IS NULL'];
+  const values = [Boolean(pinned), id, userId];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
     UPDATE notes
     SET pinned = $1,
         updated_at = now()
-    WHERE id = $2
-      AND user_id = $3
-      AND deleted_at IS NULL
-    RETURNING id, title, content_json AS content, pinned, collection_id AS "collectionId", version, created_at AS "createdAt", updated_at AS "updatedAt";
+    WHERE ${conditions.join(' AND ')}
+    RETURNING id, title, content_json AS content, pinned, collection_id AS "collectionId", workspace_id AS "workspaceId", version, created_at AS "createdAt", updated_at AS "updatedAt";
   `;
 
-  const result = await pool.query(query, [Boolean(pinned), id, userId]);
+  const result = await pool.query(query, values);
   if (result.rowCount === 1) {
     const noteTags = await findTagsByNoteId({ noteId: id, pool });
     return { updatedNote: { ...result.rows[0], tags: noteTags } };
@@ -395,11 +456,10 @@ export async function setNotePinned({
 
 /**
  * Lists soft-deleted (trashed) notes for an authenticated user with pagination.
- * Excludes active notes (deleted_at IS NOT NULL).
- * Ordered by deleted_at DESC, updated_at DESC, id ASC.
  *
  * @param {object} params
  * @param {string} params.userId
+ * @param {string} [params.workspaceId]
  * @param {number} [params.limit=20]
  * @param {number} [params.offset=0]
  * @param {import('pg').Pool} [params.pool]
@@ -407,12 +467,17 @@ export async function setNotePinned({
  */
 export async function findTrashedNotesByUserId({
   userId,
+  workspaceId,
   limit = 20,
   offset = 0,
   pool = getPool(),
 }) {
   const conditions = ['user_id = $1', 'deleted_at IS NOT NULL'];
   const values = [userId];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
 
   // Count total trashed notes for accurate pagination
   const countQuery = `
@@ -429,7 +494,7 @@ export async function findTrashedNotesByUserId({
   const offsetParamIdx = selectValues.length;
 
   const query = `
-    SELECT id, title, content_text, pinned, collection_id AS "collectionId", version, created_at AS "createdAt", updated_at AS "updatedAt", deleted_at AS "deletedAt"
+    SELECT id, title, content_text, pinned, collection_id AS "collectionId", workspace_id AS "workspaceId", version, created_at AS "createdAt", updated_at AS "updatedAt", deleted_at AS "deletedAt"
     FROM notes
     WHERE ${conditions.join(' AND ')}
     ORDER BY deleted_at DESC, updated_at DESC, id ASC
@@ -459,36 +524,40 @@ export async function findTrashedNotesByUserId({
 
 /**
  * Restores a soft-deleted note by setting deleted_at = NULL.
- * Only succeeds if the note is currently soft-deleted (deleted_at IS NOT NULL)
- * and owned by the specified user.
  *
  * @param {object} params
  * @param {string} params.id
  * @param {string} params.userId
+ * @param {string} [params.workspaceId]
  * @param {import('pg').Pool} [params.pool]
  * @returns {Promise<{ restoredNote?: object, notFound?: boolean }>}
  */
 export async function restoreNote({
   id,
   userId,
+  workspaceId,
   pool = getPool(),
 }) {
+  const conditions = ['id = $1', 'user_id = $2', 'deleted_at IS NOT NULL'];
+  const values = [id, userId];
+  if (workspaceId) {
+    values.push(workspaceId);
+    conditions.push(`workspace_id = $${values.length}`);
+  }
+
   const query = `
     UPDATE notes
     SET deleted_at = NULL,
         updated_at = now()
-    WHERE id = $1
-      AND user_id = $2
-      AND deleted_at IS NOT NULL
-    RETURNING id, title, content_json AS content, pinned, collection_id AS "collectionId", version, created_at AS "createdAt", updated_at AS "updatedAt";
+    WHERE ${conditions.join(' AND ')}
+    RETURNING id, title, content_json AS content, pinned, collection_id AS "collectionId", workspace_id AS "workspaceId", version, created_at AS "createdAt", updated_at AS "updatedAt";
   `;
 
-  const result = await pool.query(query, [id, userId]);
+  const result = await pool.query(query, values);
   if (result.rowCount === 1) {
     const noteTags = await findTagsByNoteId({ noteId: id, pool });
     return { restoredNote: { ...result.rows[0], tags: noteTags } };
   }
 
-  // Not found, owned by someone else, or already active
   return { notFound: true };
 }

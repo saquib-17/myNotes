@@ -565,12 +565,12 @@ export default function RevisionPage() {
   }, [doubtsOffset, doubtsTotal]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5">
       {/* Page Header / Subtitle required by tests */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-stone-200 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-2.5">
         <div>
-          <p className="text-sm text-stone-600">Track spaced repetition and revision schedules.</p>
-          <p className="text-xs text-stone-400 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-600">Track spaced repetition and revision schedules.</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">
             Keep track of core placement topics to revisit and track questions and doubts until resolved.
           </p>
         </div>
@@ -579,9 +579,9 @@ export default function RevisionPage() {
             <button
               type="button"
               onClick={() => handleOpenRevModal(null)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[#365CF5] text-white hover:bg-[#2848D8] shadow-xs transition-colors focus:outline-none focus:ring-2 focus:ring-[#A5B4FC]/40 cursor-pointer"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
               </svg>
               New Revision Topic
@@ -590,9 +590,9 @@ export default function RevisionPage() {
             <button
               type="button"
               onClick={() => handleOpenDoubtModal(null)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-600 text-white hover:bg-amber-700 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-amber-600 text-white hover:bg-amber-700 shadow-xs transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
               </svg>
               New Doubt
@@ -605,12 +605,12 @@ export default function RevisionPage() {
       {operationError && (
         <div
           role="alert"
-          className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center justify-between"
+          className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-sm text-rose-800 flex items-center justify-between"
         >
           <span>{operationError}</span>
           <button
             onClick={() => setOperationError(null)}
-            className="text-red-500 hover:text-red-700 text-xs font-semibold uppercase"
+            className="text-rose-600 hover:text-rose-900 text-xs font-semibold uppercase ml-4"
           >
             Dismiss
           </button>
@@ -618,7 +618,7 @@ export default function RevisionPage() {
       )}
 
       {/* Tabs Switcher */}
-      <div className="flex border-b border-stone-200" role="tablist" aria-label="Revision and Doubts Sections">
+      <div className="flex border-b border-[#E6EAF2]" role="tablist" aria-label="Revision and Doubts Sections">
         <button
           type="button"
           role="tab"
@@ -628,8 +628,8 @@ export default function RevisionPage() {
           onClick={() => handleTabChange("revision")}
           className={`pb-3 px-4 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${
             activeTab === "revision"
-              ? "border-emerald-600 text-emerald-700 font-semibold"
-              : "border-transparent text-stone-500 hover:text-stone-700 hover:border-stone-300"
+              ? "border-[#365CF5] text-[#365CF5] font-semibold"
+              : "border-transparent text-[#667085] hover:text-[#111827] hover:border-[#DCE3EF]"
           }`}
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -638,7 +638,7 @@ export default function RevisionPage() {
           Revision Items
           <span
             className={`text-xs px-2 py-0.5 rounded-full ${
-              activeTab === "revision" ? "bg-emerald-100 text-emerald-800" : "bg-stone-100 text-stone-600"
+              activeTab === "revision" ? "bg-[#EEF3FF] text-[#2948D8] font-semibold" : "bg-[#F4F6FB] text-[#667085]"
             }`}
           >
             {revisionTotal}
@@ -654,7 +654,7 @@ export default function RevisionPage() {
           className={`pb-3 px-4 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${
             activeTab === "doubts"
               ? "border-amber-600 text-amber-700 font-semibold"
-              : "border-transparent text-stone-500 hover:text-stone-700 hover:border-stone-300"
+              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
           }`}
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -663,7 +663,7 @@ export default function RevisionPage() {
           Doubts & Questions
           <span
             className={`text-xs px-2 py-0.5 rounded-full ${
-              activeTab === "doubts" ? "bg-amber-100 text-amber-800" : "bg-stone-100 text-stone-600"
+              activeTab === "doubts" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"
             }`}
           >
             {doubtsTotal}
@@ -675,11 +675,11 @@ export default function RevisionPage() {
       {/* TAB 1: REVISION ITEMS                                               */}
       {/* ─────────────────────────────────────────────────────────────────── */}
       {activeTab === "revision" && (
-        <div id="panel-revision" role="tabpanel" aria-labelledby="tab-revision" className="space-y-6">
+        <div id="panel-revision" role="tabpanel" aria-labelledby="tab-revision" className="space-y-4 sm:space-y-5">
           {/* Quick Add Bar */}
           <form
             onSubmit={handleQuickAddRevision}
-            className="p-4 bg-stone-50 border border-stone-200 rounded-xl flex flex-col md:flex-row gap-3 items-stretch md:items-center shadow-sm"
+            className="p-2.5 sm:p-3 bg-slate-50/70 border border-slate-200/90 rounded-xl flex flex-col md:flex-row gap-2.5 items-stretch md:items-center shadow-2xs"
           >
             <div className="flex-1">
               <label htmlFor="rev-quick-title" className="sr-only">
@@ -693,10 +693,10 @@ export default function RevisionPage() {
                 maxLength={REVISION_ITEM_LIMITS.MAX_TITLE_LENGTH}
                 placeholder="Quick add topic to revise (e.g. Graph BFS vs DFS edge cases)..."
                 disabled={revQuickSubmitting}
-                className="w-full px-3 py-2 text-sm bg-white border border-stone-300 rounded-lg placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-xs sm:text-sm bg-white border border-[#DCE3EF] rounded-xl text-[#111827] placeholder-[#8A94A6] focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40 focus:border-[#365CF5]"
               />
             </div>
-            <div className="w-full md:w-48">
+            <div className="w-full md:w-44">
               <label htmlFor="rev-quick-subject" className="sr-only">
                 Subject (Optional)
               </label>
@@ -708,36 +708,36 @@ export default function RevisionPage() {
                 maxLength={REVISION_ITEM_LIMITS.MAX_SUBJECT_LENGTH}
                 placeholder="Subject (e.g. DSA)"
                 disabled={revQuickSubmitting}
-                className="w-full px-3 py-2 text-sm bg-white border border-stone-300 rounded-lg placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-xs sm:text-sm bg-white border border-[#DCE3EF] rounded-xl text-[#111827] placeholder-[#8A94A6] focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40 focus:border-[#365CF5]"
               />
             </div>
             <button
               type="submit"
               disabled={revQuickSubmitting || !revQuickTitle.trim()}
-              className="px-4 py-2 text-sm font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-sm whitespace-nowrap"
+              className="px-4 py-2 text-xs font-semibold bg-[#365CF5] text-white rounded-xl hover:bg-[#2848D8] disabled:opacity-50 transition-colors shadow-xs whitespace-nowrap cursor-pointer"
             >
               {revQuickSubmitting ? "Adding..." : "Add Topic"}
             </button>
           </form>
 
           {revQuickError && (
-            <p className="text-xs text-red-600 px-1">{revQuickError}</p>
+            <p className="text-xs text-rose-600 px-1">{revQuickError}</p>
           )}
 
           {/* Filter & Search Bar */}
           <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
             {/* Status Tabs */}
-            <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-lg">
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
               <button
                 type="button"
                 onClick={() => {
                   setRevStatusFilter("all");
                   setRevisionOffset(0);
                 }}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
                   revStatusFilter === "all"
-                    ? "bg-white text-stone-900 shadow-sm"
-                    : "text-stone-600 hover:text-stone-900"
+                    ? "bg-white text-slate-900 shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 All Status
@@ -748,10 +748,10 @@ export default function RevisionPage() {
                   setRevStatusFilter("pending");
                   setRevisionOffset(0);
                 }}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
                   revStatusFilter === "pending"
-                    ? "bg-white text-stone-900 shadow-sm"
-                    : "text-stone-600 hover:text-stone-900"
+                    ? "bg-white text-slate-900 shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Pending
@@ -762,10 +762,10 @@ export default function RevisionPage() {
                   setRevStatusFilter("revised");
                   setRevisionOffset(0);
                 }}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
                   revStatusFilter === "revised"
-                    ? "bg-white text-stone-900 shadow-sm"
-                    : "text-stone-600 hover:text-stone-900"
+                    ? "bg-white text-slate-900 shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Revised
@@ -782,7 +782,7 @@ export default function RevisionPage() {
                   setRevisionOffset(0);
                 }}
                 placeholder="Filter by subject..."
-                className="w-1/3 px-3 py-1.5 text-xs bg-white border border-stone-300 rounded-lg placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-1/3 px-3 py-1.5 text-xs bg-white border border-[#DCE3EF] rounded-xl text-[#182230] placeholder-[#8A94A6] focus:outline-none focus:ring-1 focus:ring-[#365CF5] focus:border-[#365CF5]"
               />
               <div className="relative flex-1">
                 <input
@@ -790,13 +790,13 @@ export default function RevisionPage() {
                   value={revSearchQuery}
                   onChange={(e) => setRevSearchQuery(e.target.value)}
                   placeholder="Search revision topics..."
-                  className="w-full px-3 py-1.5 text-xs bg-white border border-stone-300 rounded-lg placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-1.5 text-xs bg-white border border-[#DCE3EF] rounded-xl text-[#182230] placeholder-[#8A94A6] focus:outline-none focus:ring-1 focus:ring-[#365CF5] focus:border-[#365CF5]"
                 />
                 {revSearchQuery && (
                   <button
                     type="button"
                     onClick={() => setRevSearchQuery("")}
-                    className="absolute right-2 top-1.5 text-stone-400 hover:text-stone-600 text-xs"
+                    className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-600 text-xs"
                     aria-label="Clear search"
                   >
                     ×
@@ -808,16 +808,16 @@ export default function RevisionPage() {
 
           {/* List or Empty State */}
           {revisionLoading ? (
-            <div className="p-8 text-center text-sm text-stone-500" aria-live="polite">
+            <div className="p-8 text-center text-sm text-slate-500" aria-live="polite">
               Loading revision topics...
             </div>
           ) : revisionError ? (
-            <div className="p-6 bg-red-50 border border-red-200 rounded-xl text-center">
-              <p className="text-sm text-red-700">{revisionError}</p>
+            <div className="p-6 bg-rose-50 border border-rose-200 rounded-2xl text-center">
+              <p className="text-sm text-rose-800">{revisionError}</p>
               <button
                 type="button"
                 onClick={() => loadRevisionItems()}
-                className="mt-3 px-3 py-1.5 text-xs font-medium bg-red-600 text-white rounded-md hover:bg-red-700"
+                className="mt-3 px-3 py-1.5 text-xs font-semibold bg-rose-600 text-white rounded-xl hover:bg-rose-700 transition-colors"
               >
                 Retry
               </button>
@@ -828,18 +828,23 @@ export default function RevisionPage() {
                 revDebouncedQuery || revSubjectFilter
                   ? "No matching revision topics found"
                   : revStatusFilter === "pending"
-                  ? "No pending topics to revise"
+                  ? "No pending revision items"
                   : revStatusFilter === "revised"
                   ? "No revised topics yet"
-                  : "No revision topics yet"
+                  : "No revision items yet"
               }
               description={
                 revDebouncedQuery || revSubjectFilter
                   ? "Try clearing filters or search queries to see more items."
                   : "Add topics you need to review before interviews or exams."
               }
+              note={
+                !revDebouncedQuery && !revSubjectFilter && revStatusFilter === "all"
+                  ? "No revision topics yet"
+                  : undefined
+              }
               icon={
-                <svg className="w-8 h-8 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               }
@@ -851,8 +856,8 @@ export default function RevisionPage() {
                 return (
                   <div
                     key={item.id}
-                    className={`p-4 rounded-xl border transition-all bg-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:shadow ${
-                      isRevised ? "border-stone-200 bg-stone-50/50" : "border-stone-200"
+                    className={`p-3 sm:p-3.5 rounded-xl border transition-all bg-white flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-2xs hover:shadow-xs hover:border-slate-300 ${
+                      isRevised ? "border-slate-200/90 bg-slate-50/50 opacity-80" : "border-slate-200/90"
                     }`}
                   >
                     <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -861,10 +866,10 @@ export default function RevisionPage() {
                         type="button"
                         onClick={() => handleToggleRevStatus(item)}
                         aria-label={isRevised ? "Reopen topic" : "Mark topic as revised"}
-                        className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                        className={`mt-0.5 shrink-0 w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${
                           isRevised
-                            ? "bg-emerald-600 border-emerald-600 text-white"
-                            : "border-stone-300 hover:border-emerald-500 bg-white"
+                            ? "bg-[#365CF5] border-[#365CF5] text-white"
+                            : "border-[#DCE3EF] hover:border-[#365CF5] bg-white"
                         }`}
                       >
                         {isRevised && (
@@ -883,20 +888,20 @@ export default function RevisionPage() {
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <h2
                             className={`text-sm font-semibold truncate ${
-                              isRevised ? "text-stone-500 line-through" : "text-stone-900"
+                              isRevised ? "text-slate-400 line-through" : "text-slate-900"
                             }`}
                           >
                             {item.title}
                           </h2>
 
                           {item.subject && (
-                            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                            <span className="px-2 py-0.5 text-xs font-medium rounded-md bg-[#EEF3FF] text-[#2948D8] border border-[#365CF5]/20">
                               {item.subject}
                             </span>
                           )}
 
                           <span
-                            className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                            className={`px-2 py-0.5 text-xs font-medium rounded-md ${
                               isRevised
                                 ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
                                 : "bg-amber-50 text-amber-700 border border-amber-100"
@@ -907,12 +912,12 @@ export default function RevisionPage() {
                         </div>
 
                         {item.details && (
-                          <p className="text-xs text-stone-600 line-clamp-2 mt-1 whitespace-pre-wrap">
+                          <p className="text-xs text-slate-600 line-clamp-2 mt-1 whitespace-pre-wrap">
                             {item.details}
                           </p>
                         )}
 
-                        <div className="flex items-center gap-4 text-xs text-stone-400 mt-2">
+                        <div className="flex items-center gap-4 text-xs text-slate-400 mt-2">
                           {isRevised && item.revised_at ? (
                             <span>Revised on {formatTimestamp(item.revised_at)}</span>
                           ) : (
@@ -927,10 +932,10 @@ export default function RevisionPage() {
                       <button
                         type="button"
                         onClick={() => handleToggleRevStatus(item)}
-                        className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition-colors ${
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition-colors ${
                           isRevised
-                            ? "border-stone-300 text-stone-700 hover:bg-stone-100"
-                            : "border-emerald-600 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+                            ? "border-slate-300 text-slate-700 hover:bg-slate-100"
+                            : "border-[#365CF5] text-[#365CF5] bg-[#EEF3FF] hover:bg-[#E2E8FF]"
                         }`}
                       >
                         {isRevised ? "Reopen" : "Mark Revised"}
@@ -938,7 +943,7 @@ export default function RevisionPage() {
                       <button
                         type="button"
                         onClick={() => handleOpenRevModal(item)}
-                        className="p-1.5 text-stone-500 hover:text-stone-800 rounded-lg hover:bg-stone-100 transition-colors"
+                        className="p-1.5 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 transition-colors"
                         aria-label="Edit topic"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -953,7 +958,7 @@ export default function RevisionPage() {
                       <button
                         type="button"
                         onClick={() => setDeletingRevItem(item)}
-                        className="p-1.5 text-stone-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
                         aria-label="Delete topic"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -972,14 +977,14 @@ export default function RevisionPage() {
 
               {/* Pagination Controls */}
               {revisionTotal > PAGE_SIZE && (
-                <div className="flex items-center justify-between border-t border-stone-200 pt-4 px-1">
-                  <span className="text-xs text-stone-500">{revisionRangeText}</span>
+                <div className="flex items-center justify-between border-t border-slate-200 pt-4 px-1">
+                  <span className="text-xs text-slate-500">{revisionRangeText}</span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       disabled={revisionOffset === 0}
                       onClick={() => setRevisionOffset((prev) => Math.max(0, prev - PAGE_SIZE))}
-                      className="px-3 py-1.5 text-xs font-medium rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+                      className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-40 transition-colors"
                     >
                       Previous
                     </button>
@@ -987,7 +992,7 @@ export default function RevisionPage() {
                       type="button"
                       disabled={!revisionHasMore}
                       onClick={() => setRevisionOffset((prev) => prev + PAGE_SIZE)}
-                      className="px-3 py-1.5 text-xs font-medium rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+                      className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-40 transition-colors"
                     >
                       Next
                     </button>
@@ -1007,7 +1012,7 @@ export default function RevisionPage() {
           {/* Quick Add Bar */}
           <form
             onSubmit={handleQuickAddDoubt}
-            className="p-4 bg-stone-50 border border-stone-200 rounded-xl flex flex-col md:flex-row gap-3 items-stretch md:items-center shadow-sm"
+            className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col md:flex-row gap-3 items-stretch md:items-center shadow-2xs"
           >
             <div className="flex-1">
               <label htmlFor="doubt-quick-question" className="sr-only">
@@ -1021,7 +1026,7 @@ export default function RevisionPage() {
                 maxLength={DOUBT_LIMITS.MAX_QUESTION_LENGTH}
                 placeholder="Ask or record a doubt (e.g. Why does volatile not guarantee atomicity in Java?)..."
                 disabled={doubtQuickSubmitting}
-                className="w-full px-3 py-2 text-sm bg-white border border-stone-300 rounded-lg placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-xs sm:text-sm bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
               />
             </div>
             <div className="w-full md:w-48">
@@ -1036,36 +1041,36 @@ export default function RevisionPage() {
                 maxLength={DOUBT_LIMITS.MAX_SUBJECT_LENGTH}
                 placeholder="Subject (e.g. Java)"
                 disabled={doubtQuickSubmitting}
-                className="w-full px-3 py-2 text-sm bg-white border border-stone-300 rounded-lg placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-xs sm:text-sm bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
               />
             </div>
             <button
               type="submit"
               disabled={doubtQuickSubmitting || !doubtQuickQuestion.trim()}
-              className="px-4 py-2 text-sm font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 transition-colors shadow-sm whitespace-nowrap"
+              className="px-4 py-2 text-xs sm:text-sm font-semibold bg-amber-600 text-white rounded-xl hover:bg-amber-700 disabled:opacity-50 transition-colors shadow-2xs whitespace-nowrap"
             >
               {doubtQuickSubmitting ? "Adding..." : "Ask Doubt"}
             </button>
           </form>
 
           {doubtQuickError && (
-            <p className="text-xs text-red-600 px-1">{doubtQuickError}</p>
+            <p className="text-xs text-rose-600 px-1">{doubtQuickError}</p>
           )}
 
           {/* Filter & Search Bar */}
           <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
             {/* Status Tabs */}
-            <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-lg">
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
               <button
                 type="button"
                 onClick={() => {
                   setDoubtStatusFilter("all");
                   setDoubtsOffset(0);
                 }}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
                   doubtStatusFilter === "all"
-                    ? "bg-white text-stone-900 shadow-sm"
-                    : "text-stone-600 hover:text-stone-900"
+                    ? "bg-white text-slate-900 shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 All Status
@@ -1076,10 +1081,10 @@ export default function RevisionPage() {
                   setDoubtStatusFilter("open");
                   setDoubtsOffset(0);
                 }}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
                   doubtStatusFilter === "open"
-                    ? "bg-white text-stone-900 shadow-sm"
-                    : "text-stone-600 hover:text-stone-900"
+                    ? "bg-white text-slate-900 shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Open Doubts
@@ -1090,10 +1095,10 @@ export default function RevisionPage() {
                   setDoubtStatusFilter("resolved");
                   setDoubtsOffset(0);
                 }}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
                   doubtStatusFilter === "resolved"
-                    ? "bg-white text-stone-900 shadow-sm"
-                    : "text-stone-600 hover:text-stone-900"
+                    ? "bg-white text-slate-900 shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Resolved
@@ -1110,7 +1115,7 @@ export default function RevisionPage() {
                   setDoubtsOffset(0);
                 }}
                 placeholder="Filter by subject..."
-                className="w-1/3 px-3 py-1.5 text-xs bg-white border border-stone-300 rounded-lg placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-1/3 px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
               <div className="relative flex-1">
                 <input
@@ -1118,13 +1123,13 @@ export default function RevisionPage() {
                   value={doubtSearchQuery}
                   onChange={(e) => setDoubtSearchQuery(e.target.value)}
                   placeholder="Search doubts..."
-                  className="w-full px-3 py-1.5 text-xs bg-white border border-stone-300 rounded-lg placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
                 {doubtSearchQuery && (
                   <button
                     type="button"
                     onClick={() => setDoubtSearchQuery("")}
-                    className="absolute right-2 top-1.5 text-stone-400 hover:text-stone-600 text-xs"
+                    className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-600 text-xs"
                     aria-label="Clear search"
                   >
                     ×
@@ -1136,16 +1141,16 @@ export default function RevisionPage() {
 
           {/* Doubts List or Empty State */}
           {doubtsLoading ? (
-            <div className="p-8 text-center text-sm text-stone-500" aria-live="polite">
+            <div className="p-8 text-center text-sm text-slate-500" aria-live="polite">
               Loading doubts...
             </div>
           ) : doubtsError ? (
-            <div className="p-6 bg-red-50 border border-red-200 rounded-xl text-center">
-              <p className="text-sm text-red-700">{doubtsError}</p>
+            <div className="p-6 bg-rose-50 border border-rose-200 rounded-2xl text-center">
+              <p className="text-sm text-rose-800">{doubtsError}</p>
               <button
                 type="button"
                 onClick={() => loadDoubts()}
-                className="mt-3 px-3 py-1.5 text-xs font-medium bg-red-600 text-white rounded-md hover:bg-red-700"
+                className="mt-3 px-3 py-1.5 text-xs font-semibold bg-rose-600 text-white rounded-xl hover:bg-rose-700 transition-colors"
               >
                 Retry
               </button>
@@ -1159,7 +1164,7 @@ export default function RevisionPage() {
                   ? "No open doubts"
                   : doubtStatusFilter === "resolved"
                   ? "No resolved doubts yet"
-                  : "No doubts recorded yet"
+                  : "No doubts yet"
               }
               description={
                 doubtDebouncedQuery || doubtSubjectFilter
@@ -1167,7 +1172,7 @@ export default function RevisionPage() {
                   : "Record confusion, questions, and clarify concepts here."
               }
               icon={
-                <svg className="w-8 h-8 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               }
@@ -1179,8 +1184,8 @@ export default function RevisionPage() {
                 return (
                   <div
                     key={doubt.id}
-                    className={`p-4 rounded-xl border transition-all bg-white shadow-sm hover:shadow ${
-                      isResolved ? "border-stone-200 bg-stone-50/40" : "border-stone-200"
+                    className={`p-3.5 sm:p-4 rounded-xl border transition-all bg-white shadow-2xs hover:shadow-xs hover:border-slate-300 ${
+                      isResolved ? "border-slate-200/90 bg-slate-50/40 opacity-80" : "border-slate-200/90"
                     }`}
                   >
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -1188,7 +1193,7 @@ export default function RevisionPage() {
                         {/* Badges & Question */}
                         <div className="flex flex-wrap items-center gap-2 mb-1.5">
                           <span
-                            className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                            className={`px-2 py-0.5 text-xs font-medium rounded-md ${
                               isResolved
                                 ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
                                 : "bg-amber-50 text-amber-700 border border-amber-100"
@@ -1198,25 +1203,25 @@ export default function RevisionPage() {
                           </span>
 
                           {doubt.subject && (
-                            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                            <span className="px-2 py-0.5 text-xs font-medium rounded-md bg-[#EEF3FF] text-[#2948D8] border border-[#365CF5]/20">
                               {doubt.subject}
                             </span>
                           )}
                         </div>
 
-                        <h2 className="text-base font-semibold text-stone-900 mt-1 whitespace-pre-wrap">
+                        <h2 className="text-base font-semibold text-slate-900 mt-1 whitespace-pre-wrap">
                           {doubt.question}
                         </h2>
 
                         {doubt.details && (
-                          <p className="text-xs text-stone-600 whitespace-pre-wrap mt-2 bg-stone-50 p-2.5 rounded-lg border border-stone-200/60">
+                          <p className="text-xs text-slate-600 whitespace-pre-wrap mt-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
                             {doubt.details}
                           </p>
                         )}
 
                         {/* Resolution Callout */}
                         {isResolved && doubt.resolution && (
-                          <div className="mt-3 p-3 bg-emerald-50/70 border border-emerald-200 rounded-lg">
+                          <div className="mt-3 p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl">
                             <span className="text-xs font-semibold text-emerald-800 uppercase tracking-wider block mb-1">
                               Resolution
                             </span>
@@ -1226,7 +1231,7 @@ export default function RevisionPage() {
                           </div>
                         )}
 
-                        <div className="flex items-center gap-4 text-xs text-stone-400 mt-3">
+                        <div className="flex items-center gap-4 text-xs text-slate-400 mt-3">
                           {isResolved && doubt.resolved_at ? (
                             <span>Resolved on {formatTimestamp(doubt.resolved_at)}</span>
                           ) : (
@@ -1241,7 +1246,7 @@ export default function RevisionPage() {
                           <button
                             type="button"
                             onClick={() => handleReopenDoubt(doubt)}
-                            className="px-3 py-1 text-xs font-medium rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-100 transition-colors"
+                            className="px-3 py-1 text-xs font-semibold rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors"
                           >
                             Reopen
                           </button>
@@ -1249,7 +1254,7 @@ export default function RevisionPage() {
                           <button
                             type="button"
                             onClick={() => handleOpenResolveModal(doubt)}
-                            className="px-3 py-1 text-xs font-medium rounded-lg border border-emerald-600 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors"
+                            className="px-3 py-1 text-xs font-semibold rounded-lg border border-emerald-600 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors"
                           >
                             Resolve Doubt
                           </button>
@@ -1258,7 +1263,7 @@ export default function RevisionPage() {
                         <button
                           type="button"
                           onClick={() => handleOpenDoubtModal(doubt)}
-                          className="p-1.5 text-stone-500 hover:text-stone-800 rounded-lg hover:bg-stone-100 transition-colors"
+                          className="p-1.5 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 transition-colors"
                           aria-label="Edit doubt"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1273,7 +1278,7 @@ export default function RevisionPage() {
                         <button
                           type="button"
                           onClick={() => setDeletingDoubt(doubt)}
-                          className="p-1.5 text-stone-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
                           aria-label="Delete doubt"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1293,14 +1298,14 @@ export default function RevisionPage() {
 
               {/* Pagination Controls */}
               {doubtsTotal > PAGE_SIZE && (
-                <div className="flex items-center justify-between border-t border-stone-200 pt-4 px-1">
-                  <span className="text-xs text-stone-500">{doubtsRangeText}</span>
+                <div className="flex items-center justify-between border-t border-slate-200 pt-4 px-1">
+                  <span className="text-xs text-slate-500">{doubtsRangeText}</span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       disabled={doubtsOffset === 0}
                       onClick={() => setDoubtsOffset((prev) => Math.max(0, prev - PAGE_SIZE))}
-                      className="px-3 py-1.5 text-xs font-medium rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+                      className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-40 transition-colors"
                     >
                       Previous
                     </button>
@@ -1308,7 +1313,7 @@ export default function RevisionPage() {
                       type="button"
                       disabled={!doubtsHasMore}
                       onClick={() => setDoubtsOffset((prev) => prev + PAGE_SIZE)}
-                      className="px-3 py-1.5 text-xs font-medium rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+                      className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-40 transition-colors"
                     >
                       Next
                     </button>
@@ -1328,22 +1333,22 @@ export default function RevisionPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="rev-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
         >
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-stone-200">
-            <h3 id="rev-modal-title" className="text-base font-semibold text-stone-900 mb-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
+            <h3 id="rev-modal-title" className="text-base font-bold text-slate-900 mb-4">
               {editingRevItem ? "Edit Revision Topic" : "New Revision Topic"}
             </h3>
 
             {revFormError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+              <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700">
                 {revFormError}
               </div>
             )}
 
             <form onSubmit={handleSaveRevModal} className="space-y-4">
               <div>
-                <label htmlFor="rev-form-title" className="block text-xs font-medium text-stone-700 mb-1">
+                <label htmlFor="rev-form-title" className="block text-xs font-semibold text-slate-700 mb-1">
                   Topic Title *
                 </label>
                 <input
@@ -1354,15 +1359,15 @@ export default function RevisionPage() {
                   onChange={(e) => setRevFormTitle(e.target.value)}
                   maxLength={REVISION_ITEM_LIMITS.MAX_TITLE_LENGTH}
                   placeholder="e.g. Dynamic Programming (0/1 Knapsack variations)"
-                  className="w-full px-3 py-2 text-sm border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 text-sm bg-white border border-[#DCE3EF] rounded-xl text-[#182230] focus:outline-none focus:ring-1 focus:ring-[#365CF5] focus:border-[#365CF5]"
                 />
-                <span className="text-[10px] text-stone-400 mt-1 block">
+                <span className="text-[10px] text-[#8A94A6] mt-1 block">
                   {revFormTitle.length}/{REVISION_ITEM_LIMITS.MAX_TITLE_LENGTH} chars
                 </span>
               </div>
 
               <div>
-                <label htmlFor="rev-form-subject" className="block text-xs font-medium text-stone-700 mb-1">
+                <label htmlFor="rev-form-subject" className="block text-xs font-semibold text-[#182230] mb-1">
                   Subject (Optional)
                 </label>
                 <input
@@ -1372,12 +1377,12 @@ export default function RevisionPage() {
                   onChange={(e) => setRevFormSubject(e.target.value)}
                   maxLength={REVISION_ITEM_LIMITS.MAX_SUBJECT_LENGTH}
                   placeholder="e.g. Algorithms"
-                  className="w-full px-3 py-2 text-sm border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 text-sm bg-white border border-[#DCE3EF] rounded-xl text-[#182230] focus:outline-none focus:ring-1 focus:ring-[#365CF5] focus:border-[#365CF5]"
                 />
               </div>
 
               <div>
-                <label htmlFor="rev-form-details" className="block text-xs font-medium text-stone-700 mb-1">
+                <label htmlFor="rev-form-details" className="block text-xs font-semibold text-[#182230] mb-1">
                   Details & Key Concepts (Optional)
                 </label>
                 <textarea
@@ -1387,23 +1392,23 @@ export default function RevisionPage() {
                   onChange={(e) => setRevFormDetails(e.target.value)}
                   maxLength={REVISION_ITEM_LIMITS.MAX_DETAILS_LENGTH}
                   placeholder="Key edge cases, formulas, or tricky interview questions to remember..."
-                  className="w-full px-3 py-2 text-sm border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 text-sm bg-white border border-[#DCE3EF] rounded-xl text-[#182230] focus:outline-none focus:ring-1 focus:ring-[#365CF5] focus:border-[#365CF5]"
                 />
-                <span className="text-[10px] text-stone-400 mt-1 block">
+                <span className="text-[10px] text-[#8A94A6] mt-1 block">
                   {revFormDetails.length}/{REVISION_ITEM_LIMITS.MAX_DETAILS_LENGTH} chars
                 </span>
               </div>
 
               {editingRevItem && (
                 <div>
-                  <label htmlFor="rev-form-status" className="block text-xs font-medium text-stone-700 mb-1">
+                  <label htmlFor="rev-form-status" className="block text-xs font-semibold text-[#182230] mb-1">
                     Status
                   </label>
                   <select
                     id="rev-form-status"
                     value={revFormStatus}
                     onChange={(e) => setRevFormStatus(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 text-sm bg-white border border-[#DCE3EF] rounded-xl text-[#182230] focus:outline-none focus:ring-1 focus:ring-[#365CF5] focus:border-[#365CF5]"
                   >
                     <option value="pending">Pending</option>
                     <option value="revised">Revised</option>
@@ -1411,19 +1416,19 @@ export default function RevisionPage() {
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#E6EAF2]">
                 <button
                   type="button"
                   disabled={revFormSubmitting}
                   onClick={() => setShowRevModal(false)}
-                  className="px-4 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 rounded-lg"
+                  className="px-4 py-2 text-xs font-semibold text-[#344054] hover:bg-[#F4F6FB] rounded-xl transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={revFormSubmitting || !revFormTitle.trim()}
-                  className="px-4 py-2 text-xs font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+                  className="px-4 py-2 text-xs font-semibold bg-[#365CF5] text-white rounded-xl hover:bg-[#2848D8] disabled:opacity-50 transition-colors"
                 >
                   {revFormSubmitting ? "Saving..." : editingRevItem ? "Save Changes" : "Create Topic"}
                 </button>
@@ -1441,25 +1446,25 @@ export default function RevisionPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="resolve-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
         >
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-stone-200">
-            <h3 id="resolve-modal-title" className="text-base font-semibold text-stone-900 mb-2">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
+            <h3 id="resolve-modal-title" className="text-base font-bold text-slate-900 mb-2">
               Mark Doubt as Resolved
             </h3>
-            <p className="text-xs text-stone-600 mb-4">
-              Doubt: <span className="font-medium text-stone-800">{resolvingDoubt.question}</span>
+            <p className="text-xs text-slate-600 mb-4">
+              Doubt: <span className="font-semibold text-slate-800">{resolvingDoubt.question}</span>
             </p>
 
             {resolvingError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+              <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700">
                 {resolvingError}
               </div>
             )}
 
             <form onSubmit={handleConfirmResolveDoubt} className="space-y-4">
               <div>
-                <label htmlFor="resolve-notes" className="block text-xs font-medium text-stone-700 mb-1">
+                <label htmlFor="resolve-notes" className="block text-xs font-semibold text-slate-700 mb-1">
                   Resolution / Explanation (Optional)
                 </label>
                 <textarea
@@ -1469,26 +1474,26 @@ export default function RevisionPage() {
                   onChange={(e) => setResolvingNotes(e.target.value)}
                   maxLength={DOUBT_LIMITS.MAX_RESOLUTION_LENGTH}
                   placeholder="Record how this doubt was answered or resolved for future review..."
-                  className="w-full px-3 py-2 text-sm border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
-                <span className="text-[10px] text-stone-400 mt-1 block">
+                <span className="text-[10px] text-slate-400 mt-1 block">
                   {resolvingNotes.length}/{DOUBT_LIMITS.MAX_RESOLUTION_LENGTH} chars
                 </span>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
                 <button
                   type="button"
                   disabled={resolvingSubmitting}
                   onClick={() => setResolvingDoubt(null)}
-                  className="px-4 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 rounded-lg"
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={resolvingSubmitting}
-                  className="px-4 py-2 text-xs font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+                  className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl disabled:opacity-50 transition-colors"
                 >
                   {resolvingSubmitting ? "Resolving..." : "Confirm Resolved"}
                 </button>
@@ -1506,22 +1511,22 @@ export default function RevisionPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="doubt-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
         >
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-stone-200">
-            <h3 id="doubt-modal-title" className="text-base font-semibold text-stone-900 mb-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
+            <h3 id="doubt-modal-title" className="text-base font-bold text-slate-900 mb-4">
               {editingDoubt ? "Edit Doubt" : "New Doubt"}
             </h3>
 
             {doubtFormError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+              <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700">
                 {doubtFormError}
               </div>
             )}
 
             <form onSubmit={handleSaveDoubtModal} className="space-y-4">
               <div>
-                <label htmlFor="doubt-form-question" className="block text-xs font-medium text-stone-700 mb-1">
+                <label htmlFor="doubt-form-question" className="block text-xs font-semibold text-slate-700 mb-1">
                   Question *
                 </label>
                 <textarea
@@ -1532,15 +1537,15 @@ export default function RevisionPage() {
                   onChange={(e) => setDoubtFormQuestion(e.target.value)}
                   maxLength={DOUBT_LIMITS.MAX_QUESTION_LENGTH}
                   placeholder="e.g. Why does synchronized block require an object monitor?"
-                  className="w-full px-3 py-2 text-sm border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
-                <span className="text-[10px] text-stone-400 mt-1 block">
+                <span className="text-[10px] text-slate-400 mt-1 block">
                   {doubtFormQuestion.length}/{DOUBT_LIMITS.MAX_QUESTION_LENGTH} chars
                 </span>
               </div>
 
               <div>
-                <label htmlFor="doubt-form-subject" className="block text-xs font-medium text-stone-700 mb-1">
+                <label htmlFor="doubt-form-subject" className="block text-xs font-semibold text-slate-700 mb-1">
                   Subject (Optional)
                 </label>
                 <input
@@ -1550,12 +1555,12 @@ export default function RevisionPage() {
                   onChange={(e) => setDoubtFormSubject(e.target.value)}
                   maxLength={DOUBT_LIMITS.MAX_SUBJECT_LENGTH}
                   placeholder="e.g. Java Concurrency"
-                  className="w-full px-3 py-2 text-sm border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
 
               <div>
-                <label htmlFor="doubt-form-details" className="block text-xs font-medium text-stone-700 mb-1">
+                <label htmlFor="doubt-form-details" className="block text-xs font-semibold text-slate-700 mb-1">
                   Details / Context (Optional)
                 </label>
                 <textarea
@@ -1565,14 +1570,14 @@ export default function RevisionPage() {
                   onChange={(e) => setDoubtFormDetails(e.target.value)}
                   maxLength={DOUBT_LIMITS.MAX_DETAILS_LENGTH}
                   placeholder="Where did you encounter this? Code snippet or link context..."
-                  className="w-full px-3 py-2 text-sm border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
 
               {editingDoubt && (
                 <>
                   <div>
-                    <label htmlFor="doubt-form-resolution" className="block text-xs font-medium text-stone-700 mb-1">
+                    <label htmlFor="doubt-form-resolution" className="block text-xs font-semibold text-slate-700 mb-1">
                       Resolution / Solution Notes (Optional)
                     </label>
                     <textarea
@@ -1582,19 +1587,19 @@ export default function RevisionPage() {
                       onChange={(e) => setDoubtFormResolution(e.target.value)}
                       maxLength={DOUBT_LIMITS.MAX_RESOLUTION_LENGTH}
                       placeholder="The answer or explanation once resolved..."
-                      className="w-full px-3 py-2 text-sm border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="doubt-form-status" className="block text-xs font-medium text-stone-700 mb-1">
+                    <label htmlFor="doubt-form-status" className="block text-xs font-semibold text-slate-700 mb-1">
                       Status
                     </label>
                     <select
                       id="doubt-form-status"
                       value={doubtFormStatus}
                       onChange={(e) => setDoubtFormStatus(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     >
                       <option value="open">Open</option>
                       <option value="resolved">Resolved</option>
@@ -1603,19 +1608,19 @@ export default function RevisionPage() {
                 </>
               )}
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
                 <button
                   type="button"
                   disabled={doubtFormSubmitting}
                   onClick={() => setShowDoubtModal(false)}
-                  className="px-4 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 rounded-lg"
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={doubtFormSubmitting || !doubtFormQuestion.trim()}
-                  className="px-4 py-2 text-xs font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50"
+                  className="px-4 py-2 text-xs font-semibold bg-amber-600 text-white rounded-xl hover:bg-amber-700 disabled:opacity-50 transition-colors"
                 >
                   {doubtFormSubmitting ? "Saving..." : editingDoubt ? "Save Changes" : "Create Doubt"}
                 </button>
@@ -1633,19 +1638,19 @@ export default function RevisionPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-rev-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-stone-200">
-            <h3 id="delete-rev-title" className="text-base font-semibold text-stone-900 mb-2">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200">
+            <h3 id="delete-rev-title" className="text-base font-bold text-slate-900 mb-2">
               Delete Revision Topic?
             </h3>
-            <p className="text-xs text-stone-600 mb-4">
-              Are you sure you want to delete <span className="font-semibold text-stone-800">{deletingRevItem.title}</span>?
+            <p className="text-xs text-slate-600 mb-4">
+              Are you sure you want to delete <span className="font-semibold text-slate-800">{deletingRevItem.title}</span>?
               It will be soft-deleted and removed from your queue.
             </p>
 
             {revDeleteError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+              <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700">
                 {revDeleteError}
               </div>
             )}
@@ -1655,7 +1660,7 @@ export default function RevisionPage() {
                 type="button"
                 disabled={revDeleteSubmitting}
                 onClick={() => setDeletingRevItem(null)}
-                className="px-4 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 rounded-lg"
+                className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
               >
                 Cancel
               </button>
@@ -1663,7 +1668,7 @@ export default function RevisionPage() {
                 type="button"
                 disabled={revDeleteSubmitting}
                 onClick={handleDeleteRevConfirm}
-                className="px-4 py-2 text-xs font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                className="px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-xl disabled:opacity-50 transition-colors"
               >
                 {revDeleteSubmitting ? "Deleting..." : "Delete"}
               </button>
@@ -1680,18 +1685,18 @@ export default function RevisionPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-doubt-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
         >
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-stone-200">
-            <h3 id="delete-doubt-title" className="text-base font-semibold text-stone-900 mb-2">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200">
+            <h3 id="delete-doubt-title" className="text-base font-bold text-slate-900 mb-2">
               Delete Doubt?
             </h3>
-            <p className="text-xs text-stone-600 mb-4">
+            <p className="text-xs text-slate-600 mb-4">
               Are you sure you want to delete this doubt? It will be soft-deleted and removed from your list.
             </p>
 
             {doubtDeleteError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+              <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700">
                 {doubtDeleteError}
               </div>
             )}
@@ -1701,7 +1706,7 @@ export default function RevisionPage() {
                 type="button"
                 disabled={doubtDeleteSubmitting}
                 onClick={() => setDeletingDoubt(null)}
-                className="px-4 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 rounded-lg"
+                className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
               >
                 Cancel
               </button>
@@ -1709,7 +1714,7 @@ export default function RevisionPage() {
                 type="button"
                 disabled={doubtDeleteSubmitting}
                 onClick={handleDeleteDoubtConfirm}
-                className="px-4 py-2 text-xs font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                className="px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-xl disabled:opacity-50 transition-colors"
               >
                 {doubtDeleteSubmitting ? "Deleting..." : "Delete"}
               </button>

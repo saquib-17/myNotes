@@ -1,6 +1,7 @@
 /**
  * Accessible rich-text formatting toolbar for Tiptap editor.
  * Provides controls strictly matching the Stage 5A content schema contract.
+ * Professional Developer Navy & Royal Blue aesthetic.
  */
 
 export default function EditorToolbar({ editor, disabled = false }) {
@@ -9,24 +10,24 @@ export default function EditorToolbar({ editor, disabled = false }) {
   }
 
   const btnClass = (isActive, canAct = true) =>
-    `inline-flex items-center justify-center rounded px-2.5 py-1 text-xs font-medium transition-colors border ${
+    `inline-flex items-center justify-center rounded-lg px-2 py-0.5 text-xs font-medium transition-colors border ${
       isActive
-        ? "bg-teal-50 text-teal-800 border-teal-300 font-semibold"
-        : "bg-white text-stone-700 border-stone-200 hover:bg-stone-50 hover:text-stone-900"
+        ? "bg-[#EEF3FF] text-[#2948D8] border-[#A5B4FC] font-semibold"
+        : "bg-white text-[#374151] border-[#E6EAF2] hover:bg-[#F7F9FD] hover:text-[#111827]"
     } ${
       !canAct || disabled
         ? "opacity-40 cursor-not-allowed pointer-events-none"
         : "cursor-pointer"
-    } focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1`;
+    } focus:outline-none focus:ring-2 focus:ring-[#A5B4FC] focus:ring-offset-1`;
 
   return (
     <div
       role="toolbar"
       aria-label="Text formatting"
-      className="flex flex-wrap items-center gap-1.5 p-2 bg-stone-50 border-b border-stone-200 rounded-t-lg"
+      className="flex flex-wrap items-center gap-1 p-2 bg-[#F7F9FD] border-b border-[#E6EAF2] rounded-t-2xl"
     >
       {/* Block Formats */}
-      <div className="flex items-center gap-1 border-r border-stone-200 pr-1.5 mr-0.5">
+      <div className="flex items-center gap-1 border-r border-[#E6EAF2] pr-1.5 mr-0.5">
         <button
           type="button"
           disabled={disabled}
@@ -73,7 +74,7 @@ export default function EditorToolbar({ editor, disabled = false }) {
       </div>
 
       {/* Inline Marks */}
-      <div className="flex items-center gap-1 border-r border-stone-200 pr-1.5 mr-0.5">
+      <div className="flex items-center gap-1 border-r border-[#E6EAF2] pr-1.5 mr-0.5">
         <button
           type="button"
           disabled={disabled}
@@ -120,7 +121,7 @@ export default function EditorToolbar({ editor, disabled = false }) {
       </div>
 
       {/* Lists & Containers */}
-      <div className="flex items-center gap-1 border-r border-stone-200 pr-1.5 mr-0.5">
+      <div className="flex items-center gap-1 border-r border-[#E6EAF2] pr-1.5 mr-0.5">
         <button
           type="button"
           disabled={disabled}
@@ -201,4 +202,3 @@ export default function EditorToolbar({ editor, disabled = false }) {
     </div>
   );
 }
-

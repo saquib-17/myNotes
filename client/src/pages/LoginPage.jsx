@@ -6,7 +6,7 @@ import { safeReturnPath } from "../constants/routes.js";
 
 /**
  * LoginPage - Accessible login form with explicit loading, validation,
- * and error feedback states.
+ * and error feedback states. Styled with Midnight Indigo tokens and dark mode.
  *
  * Password and email are validated client-side before submission to provide
  * immediate guidance, but the server is the authoritative source of truth.
@@ -75,11 +75,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-stone-50">
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 relative">
       {/* Skip link */}
       <a
         href="#login-form"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-teal-700 focus:px-4 focus:py-2 focus:text-white focus:text-sm focus:font-medium"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-[#365CF5] focus:px-4 focus:py-2 focus:text-white focus:text-sm focus:font-medium"
       >
         Skip to login form
       </a>
@@ -89,22 +89,22 @@ export default function LoginPage() {
           {/* Logo / Brand */}
           <div className="flex items-center justify-center gap-3 mb-8">
             <div
-              className="h-10 w-10 rounded-xl bg-teal-800 text-white flex items-center justify-center font-bold text-xl shadow-sm"
+              className="h-10 w-10 rounded-xl bg-[#365CF5] text-white flex items-center justify-center font-bold text-xl shadow-xs"
               aria-hidden="true"
             >
               M
             </div>
-            <span className="text-2xl font-bold tracking-tight text-stone-900">
+            <span className="text-2xl font-bold tracking-tight text-[#111827]">
               MyNotes
             </span>
           </div>
 
           {/* Card */}
-          <div className="rounded-2xl border border-stone-200 bg-white px-8 py-8 shadow-sm">
-            <h1 className="text-xl font-semibold text-stone-900 mb-1">
+          <div className="rounded-2xl border border-[#E6EAF2] bg-white px-8 py-8 shadow-xs">
+            <h1 className="text-xl font-bold text-[#111827] mb-1">
               Sign in to your account
             </h1>
-            <p className="text-sm text-stone-500 mb-6">
+            <p className="text-sm text-[#667085] mb-6">
               Enter your credentials to access your workspace.
             </p>
 
@@ -114,10 +114,10 @@ export default function LoginPage() {
                 id={errorId}
                 role="alert"
                 aria-live="assertive"
-                className="mb-5 flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+                className="mb-5 flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
               >
                 <svg
-                  className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-600"
+                  className="mt-0.5 h-4 w-4 flex-shrink-0 text-rose-600"
                   viewBox="0 0 20 20"
                   fill="currentColor"
                   aria-hidden="true"
@@ -142,7 +142,7 @@ export default function LoginPage() {
               <div className="mb-4">
                 <label
                   htmlFor={emailId}
-                  className="block text-sm font-medium text-stone-700 mb-1.5"
+                  className="block text-sm font-medium text-[#374151] mb-1.5"
                 >
                   Email address
                 </label>
@@ -155,7 +155,7 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isSubmitting}
                   placeholder="you@example.com"
-                  className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 shadow-xs transition-colors focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
+                  className="w-full rounded-xl border border-[#DCE3EF] bg-white px-3.5 py-2.5 text-sm text-[#111827] placeholder:text-[#8A94A6] shadow-2xs transition-colors focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40 disabled:cursor-not-allowed disabled:bg-[#F4F6FB] disabled:text-[#8A94A6]"
                   aria-required="true"
                 />
               </div>
@@ -164,7 +164,7 @@ export default function LoginPage() {
               <div className="mb-6">
                 <label
                   htmlFor={passwordId}
-                  className="block text-sm font-medium text-stone-700 mb-1.5"
+                  className="block text-sm font-medium text-[#374151] mb-1.5"
                 >
                   Password
                 </label>
@@ -178,13 +178,13 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={isSubmitting}
                     placeholder="Your password"
-                    className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 pr-10 text-sm text-stone-900 placeholder:text-stone-400 shadow-xs transition-colors focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
+                    className="w-full rounded-xl border border-[#DCE3EF] bg-white px-3.5 py-2.5 pr-10 text-sm text-[#111827] placeholder:text-[#8A94A6] shadow-2xs transition-colors focus:border-[#365CF5] focus:outline-none focus:ring-1 focus:ring-[#A5B4FC]/40 disabled:cursor-not-allowed disabled:bg-[#F4F6FB] disabled:text-[#8A94A6]"
                     aria-required="true"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-stone-400 hover:text-stone-600 focus-visible:outline-2 focus-visible:outline-teal-700"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-[#8A94A6] hover:text-[#111827] focus-visible:outline-2 focus-visible:outline-[#A5B4FC]"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
@@ -206,7 +206,7 @@ export default function LoginPage() {
                 type="submit"
                 id="login-submit-btn"
                 disabled={isSubmitting}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-teal-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#365CF5] px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-[#2848D8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A5B4FC] disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
               >
                 {isSubmitting ? (
                   <>
@@ -222,11 +222,11 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <p className="mt-6 text-center text-sm text-stone-500">
+            <p className="mt-6 text-center text-sm text-[#667085]">
               Don&apos;t have an account?{" "}
               <Link
                 to="/register"
-                className="font-medium text-teal-700 hover:text-teal-800 hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700 rounded"
+                className="font-medium text-[#365CF5] hover:text-[#2848D8] hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#A5B4FC] rounded"
               >
                 Create one
               </Link>
@@ -235,7 +235,7 @@ export default function LoginPage() {
         </div>
       </main>
 
-      <footer className="py-4 text-center text-xs text-stone-400">
+      <footer className="py-4 text-center text-xs text-slate-400">
         MyNotes &mdash; Running locally
       </footer>
     </div>

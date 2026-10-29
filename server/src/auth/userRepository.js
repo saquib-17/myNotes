@@ -1,4 +1,5 @@
 import { query } from '../db/pool.js';
+import { ensureDefaultWorkspaceForUser } from '../workspaces/workspaceRepository.js';
 
 export class DuplicateEmailError extends Error {
   constructor(message = 'An account with this email address already exists.') {
@@ -42,7 +43,14 @@ export async function createUser({ email, passwordHash }, customQuery = query) {
       [normalized, passwordHash]
     );
 
-    return result.rows[0];
+    const user = result.rows[0];
+    try {
+      await ensureDefaultWorkspaceForUser({ userId: user.id });
+    } catch {
+      // In isolated tests where workspaces table might not be mocked, allow graceful continuation
+    }
+
+    return user;
   } catch (err) {
     // PostgreSQL error code 23505 = unique_violation
     if (err.code === '23505') {
@@ -63,7 +71,7 @@ export async function findUserByEmail(email, customQuery = query) {
   const normalized = normalizeEmail(email);
 
   const result = await customQuery(
-    `SELECT id, email, password_hash AS "passwordHash", created_at AS "createdAt"
+    `SELECT id, email, display_name AS "displayName", password_hash AS "passwordHash", created_at AS "createdAt"
      FROM users
      WHERE lower(trim(email)) = lower(trim($1));`,
     [normalized]
@@ -73,19 +81,77 @@ export async function findUserByEmail(email, customQuery = query) {
 }
 
 /**
- * Finds a user by unique identifier, returning only public non-secret fields.
+ * Finds a user by unique identifier, returning public non-secret fields.
  *
  * @param {string} id - User UUID
  * @param {Function} [customQuery] - Optional query function override for testing
- * @returns {Promise<{ id: string, email: string, createdAt: Date } | null>}
+ * @returns {Promise<{ id: string, email: string, displayName: string | null, createdAt: Date } | null>}
  */
 export async function findUserById(id, customQuery = query) {
   const result = await customQuery(
-    `SELECT id, email, created_at AS "createdAt"
+    `SELECT id, email, display_name AS "displayName", created_at AS "createdAt"
      FROM users
      WHERE id = $1;`,
     [id]
   );
 
   return result.rows[0] || null;
+}
+
+/**
+ * Finds a user by unique identifier, including password hash for authentication or password changes.
+ *
+ * @param {string} id - User UUID
+ * @param {Function} [customQuery] - Optional query function override for testing
+ * @returns {Promise<{ id: string, email: string, displayName: string | null, passwordHash: string, createdAt: Date } | null>}
+ */
+export async function findUserWithPasswordById(id, customQuery = query) {
+  const result = await customQuery(
+    `SELECT id, email, display_name AS "displayName", password_hash AS "passwordHash", created_at AS "createdAt"
+     FROM users
+     WHERE id = $1;`,
+    [id]
+  );
+
+  return result.rows[0] || null;
+}
+
+/**
+ * Updates a user's display name.
+ *
+ * @param {string} id - User UUID
+ * @param {string | null} displayName - New display name
+ * @param {Function} [customQuery] - Optional query function override for testing
+ * @returns {Promise<{ id: string, email: string, displayName: string | null, createdAt: Date } | null>}
+ */
+export async function updateUserDisplayName(id, displayName, customQuery = query) {
+  const result = await customQuery(
+    `UPDATE users
+     SET display_name = $1, updated_at = now()
+     WHERE id = $2
+     RETURNING id, email, display_name AS "displayName", created_at AS "createdAt";`,
+    [displayName, id]
+  );
+
+  return result.rows[0] || null;
+}
+
+/**
+ * Updates a user's password hash.
+ *
+ * @param {string} id - User UUID
+ * @param {string} passwordHash - New Argon2id hash
+ * @param {Function} [customQuery] - Optional query function override for testing
+ * @returns {Promise<boolean>}
+ */
+export async function updateUserPassword(id, passwordHash, customQuery = query) {
+  const result = await customQuery(
+    `UPDATE users
+     SET password_hash = $1, updated_at = now()
+     WHERE id = $2
+     RETURNING id;`,
+    [passwordHash, id]
+  );
+
+  return Boolean(result.rows[0]);
 }

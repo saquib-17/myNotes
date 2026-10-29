@@ -108,6 +108,10 @@ export function AuthProvider({ children }) {
     setSessionError(null);
   }, []);
 
+  const updateUser = useCallback((updatedFields) => {
+    setUser((prev) => (prev ? { ...prev, ...updatedFields } : prev));
+  }, []);
+
   const value = {
     user,
     isLoading,
@@ -117,6 +121,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
+    updateUser,
     getCsrfToken: ensureCsrfToken,
   };
 

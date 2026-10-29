@@ -1,5 +1,6 @@
 /**
  * LoadingState - Accessible loading indicator with live region.
+ * Professional Developer Navy & Royal Blue aesthetic.
  *
  * @param {{ message?: string }} props
  */
@@ -8,11 +9,11 @@ export default function LoadingState({ message = "Loading content..." }) {
     <div
       role="status"
       aria-live="polite"
-      className="flex items-center justify-center py-16 text-stone-500 text-sm"
+      className="flex items-center justify-center py-10 text-[#667085] text-xs sm:text-sm"
     >
       <div className="flex items-center gap-3">
         <svg
-          className="h-5 w-5 animate-spin text-teal-700"
+          className="h-5 w-5 animate-spin text-[#365CF5]"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
